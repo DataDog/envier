@@ -1,18 +1,9 @@
-[tool.poetry]
-authors = ["Gabriele N. Tornetta <phoenix1987@gmail.com>"]
-description = "Python application configuration via the environment"
-license = "MIT"
-name = "envier"
-version = "0.1.0"
-
-[tool.poetry.dependencies]
-python = ">=2.7"
-
-[tool.poetry.dev-dependencies]
-
 [build-system]
-build-backend = "poetry.core.masonry.api"
-requires = ["poetry-core>=1.0.0"]
+requires = ["setuptools >= 40.6.0", "setuptools_scm"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools_scm]
+version_scheme = "release-branch-semver"
 
 [tool.mypy]
 files = "envier/*.py"
