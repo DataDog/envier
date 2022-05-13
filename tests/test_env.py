@@ -1,5 +1,6 @@
 import pytest
 
+from envier import En
 from envier import Env
 
 
@@ -90,6 +91,17 @@ def test_env_derived():
     class Config(Env):
         foo = Env.var(int, "FOO", default=42)
         bar = Env.der(str, lambda _: str(_.foo * 2))
+
+    config = Config()
+
+    assert config.foo == 42
+    assert config.bar == "84"
+
+
+def test_env_shorthands():
+    class Config(En):
+        foo = En.v(int, "FOO", default=42)
+        bar = En.d(str, lambda _: str(_.foo * 2))
 
     config = Config()
 

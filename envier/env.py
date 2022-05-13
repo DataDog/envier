@@ -169,3 +169,6 @@ class Env(object):
     def der(cls, type, derivation):
         # type: (Type[T], Callable[[Env], T]) -> DerivedVariable[T]
         return DerivedVariable(type, derivation)
+
+    v = var
+    d = der
