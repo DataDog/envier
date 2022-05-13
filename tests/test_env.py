@@ -5,7 +5,7 @@ from envier import Env
 
 def test_env_default():
     class Config(Env):
-        foo = Env.var(int, "FOO", default=42)
+        foo = Env.var(int, "foo.bar", default=42)
 
     config = Config()
 
@@ -13,14 +13,14 @@ def test_env_default():
 
 
 def test_env(monkeypatch):
-    monkeypatch.setenv("FOO", "24")
+    monkeypatch.setenv("FOO_BAR", "24")
 
     class Config(Env):
-        foo = Env.var(int, "FOO", default=42)
+        foobar = Env.var(int, "foo.bar", default=42)
 
     config = Config()
 
-    assert config.foo == 24
+    assert config.foobar == 24
 
 
 def test_env_missing_mandatory():
@@ -117,3 +117,22 @@ def test_env_prefix(monkeypatch):
         foo = Env.var(int, "FOO", default=42)
 
     assert Config().foo == 24
+
+
+def test_env_nested_config(monkeypatch):
+    monkeypatch.setenv("MYAPP_SERVICE_PORT", "8080")
+
+    class ServiceConfig(Env):
+        __prefix__ = "service"
+
+        host = Env.var(str, "host", default="localhost")
+        port = Env.var(int, "port", default=3000)
+
+    class GlobalConfig(Env):
+        __prefix__ = "myapp"
+
+        debug_mode = Env.var(bool, "debug", default=False)
+
+        service = ServiceConfig
+
+    assert GlobalConfig().service.port == 8080

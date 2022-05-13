@@ -8,6 +8,7 @@ from typing import Tuple
 from typing import Type
 from typing import TypeVar
 from typing import Union
+from typing import cast
 import warnings
 
 
@@ -22,6 +23,11 @@ DeprecationInfo = Tuple[str, str, str]
 T = TypeVar("T")
 
 
+def _normalized(name):
+    # type: (str) -> str
+    return name.upper().replace(".", "_").rstrip("_")
+
+
 class EnvVariable(Generic[T]):
     def __init__(self, type, name, parser=None, default=NoDefault, deprecations=None):
         # type: (Type[T], str, Optional[Callable[[str], T]], Union[T, NoDefaultType], Optional[List[DeprecationInfo]]) -> None
@@ -33,12 +39,14 @@ class EnvVariable(Generic[T]):
         self.default = default
         self.deprecations = deprecations
 
-    def __call__(self, source, prefix):
-        # type: (Dict[str, str], str) -> T
-        raw = source.get(prefix + self.name)
+    def __call__(self, env, prefix):
+        # type: (Env, str) -> T
+        source = env.source
+
+        raw = source.get(prefix + _normalized(self.name))
         if raw is None and self.deprecations:
             for name, deprecated_when, removed_when in self.deprecations:
-                raw = source.get(prefix + name)
+                raw = source.get(prefix + _normalized(name))
                 if raw is not None:
                     deprecated_when_message = (
                         " in version %s" % deprecated_when
@@ -78,6 +86,9 @@ class EnvVariable(Generic[T]):
                 )
             return parsed
 
+        if self.type is bool:
+            return cast(T, raw.lower() in env.__truthy__)
+
         return self.type(raw)  # type: ignore[call-arg]
 
 
@@ -100,20 +111,49 @@ class DerivedVariable(Generic[T]):
 
 
 class Env(object):
+    """Env base class.
 
+    This class is meant to be subclassed. The configuration is declared by using
+    the ``Env.var`` and ``Env.der`` class methods. The former declares a mapping
+    between attributes of the instance of the subclass with the environment
+    variables. The latter declares derived attributes that are computed using
+    a given derivation function.
+
+    If variables share a common prefix, this can be specified with the
+    ``__prefix__`` class attribute. Any dots in the prefix or the variable names
+    will be replaced with underscores. The variable names will be uppercased
+    before being looked up in the environment.
+
+    By default, boolean variables evaluate to true if their lower-case value is
+    one of ``true``, ``yes``, ``on`` or ``1``. This can be overridden by either
+    passing a custom parser to the variable declaration, or by overriding the
+    ``__truthy__`` class attribute, which is a set of lower-case strings that
+    are considered to be a representation of ``True``.
+    """
+
+    __truthy__ = frozenset({"1", "true", "yes", "on"})
     __prefix__ = ""
 
-    def __init__(self):
+    def __init__(self, source=None, parent=None):
+        # type: (Optional[Dict[str, str]], Optional[Env]) -> None
+        self.source = source or os.environ
+        self.parent = parent
+
+        self._full_prefix = (
+            parent._full_prefix if parent is not None else ""
+        ) + _normalized(
+            self.__prefix__
+        )  # type: str
+        if self._full_prefix:
+            self._full_prefix += "_"
+
         self.spec = self.__class__
         derived = []
-        prefix = (
-            self.__prefix__.upper().replace(".", "_").rstrip("_") + "_"
-            if self.__prefix__
-            else ""
-        )
         for name, e in self.__class__.__dict__.items():
-            if isinstance(e, EnvVariable) or isinstance(e, type) and issubclass(e, Env):
-                setattr(self, name, e(os.environ, prefix))
+            if isinstance(e, EnvVariable):
+                setattr(self, name, e(self, self._full_prefix))
+            elif isinstance(e, type) and issubclass(e, Env):
+                setattr(self, name, e(source, self))
             elif isinstance(e, DerivedVariable):
                 derived.append((name, e))
 
