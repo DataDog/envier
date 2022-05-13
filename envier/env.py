@@ -21,6 +21,10 @@ DeprecationInfo = Tuple[str, str, str]
 
 
 T = TypeVar("T")
+K = TypeVar("K")
+V = TypeVar("V")
+
+MapType = Union[Callable[[str], V], Callable[[str, str], Tuple[K, V]]]
 
 
 def _normalized(name):
@@ -29,13 +33,22 @@ def _normalized(name):
 
 
 class EnvVariable(Generic[T]):
-    def __init__(self, type, name, parser=None, default=NoDefault, deprecations=None):
-        # type: (Type[T], str, Optional[Callable[[str], T]], Union[T, NoDefaultType], Optional[List[DeprecationInfo]]) -> None
+    def __init__(
+        self,
+        type,  # type: Type[T]
+        name,  # type: str
+        parser=None,  # type: Optional[Callable[[str], T]]
+        map=None,  # type: Optional[MapType]
+        default=NoDefault,  # type: Union[T, NoDefaultType]
+        deprecations=None,  # type: Optional[List[DeprecationInfo]]
+    ):
+        # type: (...) -> None
         if default is not NoDefault and not isinstance(default, type):
             raise TypeError("default must be of type {}".format(type))
         self.type = type
         self.name = name
         self.parser = parser
+        self.map = map
         self.default = default
         self.deprecations = deprecations
 
@@ -89,15 +102,18 @@ class EnvVariable(Generic[T]):
         if self.type is bool:
             return cast(T, raw.lower() in env.__truthy__)
         elif self.type in (list, tuple, set):
-            return cast(T, self.type(raw.split(env.__item_separator__)))  # type: ignore[call-arg]
+            collection = raw.split(env.__item_separator__)
+            if self.map is not None:
+                collection = map(self.map, collection)
+            return cast(T, self.type(collection))  # type: ignore[call-arg]
         elif self.type is dict:
-            return cast(
-                T,
-                dict(
-                    _.split(env.__value_separator__, maxsplit=1)
-                    for _ in raw.split(env.__item_separator__)
-                ),
+            d = dict(
+                _.split(env.__value_separator__, maxsplit=1)
+                for _ in raw.split(env.__item_separator__)
             )
+            if self.map is not None:
+                d = dict(self.map(*_) for _ in d.items())
+            return cast(T, d)
 
         return self.type(raw)  # type: ignore[call-arg]
 
@@ -139,6 +155,15 @@ class Env(object):
     passing a custom parser to the variable declaration, or by overriding the
     ``__truthy__`` class attribute, which is a set of lower-case strings that
     are considered to be a representation of ``True``.
+
+    There is also basic support for collections. An item of type ``list``,
+    ``tuple`` or ``set`` will be parsed using ``,`` as item separator.
+    Similarly, an item of type ``dict`` will be parsed with ``,`` as item
+    separator, and ``:`` as value separator. These can be changed by overriding
+    the ``__item_separator__`` and ``__value_separator__`` class attributes
+    respectively. All the elements in the collections, including key and values
+    for dictionaries, will be of type string. For more advanced control over
+    the final type, a custom ``parser`` can be passed instead.
     """
 
     __truthy__ = frozenset({"1", "true", "yes", "on"})
@@ -173,9 +198,17 @@ class Env(object):
             setattr(self, n, d(self))
 
     @classmethod
-    def var(cls, type, name, parser=None, default=NoDefault, deprecations=None):
-        # type: (Type[T], str, Optional[Callable[[str], T]], Union[T, NoDefaultType], Optional[List[DeprecationInfo]]) -> EnvVariable[T]
-        return EnvVariable(type, name, parser, default, deprecations)
+    def var(
+        cls,
+        type,  # type: Type[T]
+        name,  # type: str
+        parser=None,  # type: Optional[Callable[[str], T]]
+        map=None,  # type: Optional[MapType]
+        default=NoDefault,  # type: Union[T, NoDefaultType]
+        deprecations=None,  # type: Optional[List[DeprecationInfo]]
+    ):
+        # type: (...) -> EnvVariable[T]
+        return EnvVariable(type, name, parser, map, default, deprecations)
 
     @classmethod
     def der(cls, type, derivation):

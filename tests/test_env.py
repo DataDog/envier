@@ -214,20 +214,34 @@ def test_env_include_namespace(monkeypatch):
     assert GlobalConfig().service.host == "example.com"
 
 
+@pytest.mark.parametrize(
+    "map,expected",
+    [
+        (None, ["1", "2", "3", "4", "5"]),
+        (int, [1, 2, 3, 4, 5]),
+    ],
+)
 @pytest.mark.parametrize("_type", [list, set, tuple])
-def test_env_collections(monkeypatch, _type):
-    monkeypatch.setenv("FOO", "a,b,c,d")
+def test_env_collections(monkeypatch, _type, map, expected):
+    monkeypatch.setenv("FOO", "1,2,3,4,5")
 
     class ListConfig(Env):
-        foo = Env.var(_type, "FOO")
+        foo = Env.var(_type, "FOO", map=map)
 
-    assert ListConfig().foo == _type(["a", "b", "c", "d"])
+    assert ListConfig().foo == _type(expected)
 
 
-def test_env_dicts(monkeypatch):
+@pytest.mark.parametrize(
+    "map,expected",
+    [
+        (None, {"a": "1", "b": "2", "c": "3"}),
+        (lambda k, v: (k.encode(), int(v)), {b"a": 1, b"b": 2, b"c": 3}),
+    ],
+)
+def test_env_dicts(monkeypatch, map, expected):
     monkeypatch.setenv("FOO", "a:1,b:2,c:3")
 
     class DictConfig(Env):
-        foo = Env.var(dict, "FOO")
+        foo = Env.var(dict, "FOO", map=map)
 
-    assert DictConfig().foo == {"a": "1", "b": "2", "c": "3"}
+    assert DictConfig().foo == expected
