@@ -148,3 +148,67 @@ def test_env_nested_config(monkeypatch):
         service = ServiceConfig
 
     assert GlobalConfig().service.port == 8080
+
+
+def test_env_include():
+    class GlobalConfig(Env):
+        __prefix__ = "myapp"
+
+        debug_mode = Env.var(bool, "debug", default=False)
+
+    class ServiceConfig(Env):
+        __prefix__ = "service"
+
+        host = Env.var(str, "host", default="localhost")
+        port = Env.var(int, "port", default=3000)
+
+    GlobalConfig.include(ServiceConfig)
+
+    assert GlobalConfig().host == "localhost"
+
+
+@pytest.mark.parametrize("overwrite", [True, False])
+def test_env_include_overlap(overwrite):
+    class GlobalConfig(Env):
+        __prefix__ = "myapp"
+
+        debug_mode = Env.var(bool, "debug", default=False)
+        port = Env.var(int, "port", default=3000)
+
+    class ServiceConfig(Env):
+        __prefix__ = "service"
+
+        debug_mode = Env.var(bool, "debug", default=True)
+
+        host = Env.var(str, "host", default="localhost")
+        port = Env.var(int, "port", default=3000)
+
+    if not overwrite:
+        with pytest.raises(ValueError):
+            GlobalConfig.include(ServiceConfig)
+    else:
+        GlobalConfig.include(ServiceConfig, overwrite=True)
+
+        assert GlobalConfig().debug_mode is True
+
+
+def test_env_include_namespace(monkeypatch):
+    monkeypatch.setenv("MYAPP_SERVICE_HOST", "example.com")
+
+    class GlobalConfig(Env):
+        __prefix__ = "myapp"
+
+        debug_mode = Env.var(bool, "debug", default=False)
+
+    class ServiceConfig(Env):
+        __prefix__ = "service"
+
+        host = Env.var(str, "host", default="localhost")
+        port = Env.var(int, "port", default=3000)
+
+    GlobalConfig.include(ServiceConfig, namespace="service")
+    with pytest.raises(ValueError):
+        GlobalConfig.include(ServiceConfig, namespace="service")
+    GlobalConfig.include(ServiceConfig, namespace="service", overwrite=True)
+
+    assert GlobalConfig().service.host == "example.com"

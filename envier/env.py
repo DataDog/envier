@@ -172,3 +172,36 @@ class Env(object):
 
     v = var
     d = der
+
+    @classmethod
+    def include(cls, env_spec, namespace=None, overwrite=False):
+        # type: (Type[Env], Optional[str], bool) -> None
+        """Include variables from another Env subclass.
+
+        The new items can be merged at the top level, or parented to a
+        namespace. By default, the method raises a ``ValueError`` if the
+        operation would result in some variables being overwritten. This can
+        be disabled by setting the ``overwrite`` argument to ``True``.
+        """
+        if namespace is not None:
+            if not overwrite and hasattr(cls, namespace):
+                raise ValueError("Namespace already in use: {}".format(namespace))
+
+            setattr(cls, namespace, env_spec)
+
+        # Pick only the attributes that define variables.
+        to_include = {
+            k: v
+            for k, v in env_spec.__dict__.items()
+            if isinstance(v, (EnvVariable, DerivedVariable))
+            or isinstance(v, type)
+            and issubclass(v, Env)
+        }
+
+        if not overwrite:
+            overlap = set(cls.__dict__.keys()) & set(to_include.keys())
+            if overlap:
+                raise ValueError("Configuration clashes detected: {}".format(overlap))
+
+        for k, v in to_include.items():
+            setattr(cls, k, v)
