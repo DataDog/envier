@@ -212,3 +212,22 @@ def test_env_include_namespace(monkeypatch):
     GlobalConfig.include(ServiceConfig, namespace="service", overwrite=True)
 
     assert GlobalConfig().service.host == "example.com"
+
+
+@pytest.mark.parametrize("_type", [list, set, tuple])
+def test_env_collections(monkeypatch, _type):
+    monkeypatch.setenv("FOO", "a,b,c,d")
+
+    class ListConfig(Env):
+        foo = Env.var(_type, "FOO")
+
+    assert ListConfig().foo == _type(["a", "b", "c", "d"])
+
+
+def test_env_dicts(monkeypatch):
+    monkeypatch.setenv("FOO", "a:1,b:2,c:3")
+
+    class DictConfig(Env):
+        foo = Env.var(dict, "FOO")
+
+    assert DictConfig().foo == {"a": "1", "b": "2", "c": "3"}

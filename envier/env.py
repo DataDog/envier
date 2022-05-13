@@ -88,6 +88,16 @@ class EnvVariable(Generic[T]):
 
         if self.type is bool:
             return cast(T, raw.lower() in env.__truthy__)
+        elif self.type in (list, tuple, set):
+            return cast(T, self.type(raw.split(env.__item_separator__)))  # type: ignore[call-arg]
+        elif self.type is dict:
+            return cast(
+                T,
+                dict(
+                    _.split(env.__value_separator__, maxsplit=1)
+                    for _ in raw.split(env.__item_separator__)
+                ),
+            )
 
         return self.type(raw)  # type: ignore[call-arg]
 
@@ -133,6 +143,8 @@ class Env(object):
 
     __truthy__ = frozenset({"1", "true", "yes", "on"})
     __prefix__ = ""
+    __item_separator__ = ","
+    __value_separator__ = ":"
 
     def __init__(self, source=None, parent=None):
         # type: (Optional[Dict[str, str]], Optional[Env]) -> None
