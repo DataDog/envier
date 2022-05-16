@@ -1,3 +1,5 @@
+from typing import Optional
+
 import pytest
 
 from envier import En
@@ -247,3 +249,39 @@ def test_env_dicts(monkeypatch, map, expected):
         foo = Env.var(dict, "FOO", map=map)
 
     assert DictConfig().foo == expected
+
+
+def test_env_optional_default():
+    class DictConfig(Env):
+        foo = Env.var(Optional[str], "foo", default=None)
+
+    assert DictConfig().foo is None
+
+
+@pytest.mark.parametrize("value,_type", [(1, int), ("1", str)])
+def test_env_optional_set(monkeypatch, value, _type):
+    monkeypatch.setenv("FOO", str(value))
+
+    class DictConfig(Env):
+        foo = Env.var(Optional[_type], "foo", default=None)
+
+    assert DictConfig().foo == value
+
+
+def test_env_parser_optional(monkeypatch):
+    monkeypatch.setenv("FOO", "1")
+
+    class DictConfig(Env):
+        foo = Env.var(Optional[str], "foo", parser=lambda _: None, default=None)
+
+    assert DictConfig().foo is None
+
+
+@pytest.mark.parametrize("value", [1, None])
+def test_env_derived_optional(monkeypatch, value):
+    monkeypatch.setenv("FOO", "1")
+
+    class DictConfig(Env):
+        foo = Env.der(Optional[int], lambda _: value)
+
+    assert DictConfig().foo is value

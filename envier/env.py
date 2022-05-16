@@ -1,4 +1,5 @@
 import os
+from typing import Any
 from typing import Callable
 from typing import Dict
 from typing import Generic
@@ -33,6 +34,14 @@ def _normalized(name):
     return name.upper().replace(".", "_").rstrip("_")
 
 
+def _check_type(value, _type):
+    # type: (Any, Type[T]) -> bool
+    if hasattr(_type, "__origin__"):
+        return isinstance(value, _type.__args__)  # type: ignore[attr-defined]
+
+    return isinstance(value, _type)
+
+
 class EnvVariable(Generic[T]):
     def __init__(
         self,
@@ -44,7 +53,12 @@ class EnvVariable(Generic[T]):
         deprecations=None,  # type: Optional[List[DeprecationInfo]]
     ):
         # type: (...) -> None
-        if default is not NoDefault and not isinstance(default, type):
+        if hasattr(type, "__origin__") and type.__origin__ is Union:  # type: ignore[attr-defined]
+            if not isinstance(default, type.__args__):  # type: ignore[attr-defined]
+                raise TypeError(
+                    "default must be either of these types {}".format(type.__args__)  # type: ignore[attr-defined]
+                )
+        elif default is not NoDefault and not isinstance(default, type):
             raise TypeError("default must be of type {}".format(type))
         self.type = type
         self.name = name
@@ -92,7 +106,7 @@ class EnvVariable(Generic[T]):
 
         if self.parser is not None:
             parsed = self.parser(raw)
-            if type(parsed) is not self.type:
+            if not _check_type(parsed, self.type):
                 raise TypeError(
                     "parser returned type {} instead of {}".format(
                         type(parsed), self.type
@@ -104,17 +118,25 @@ class EnvVariable(Generic[T]):
             return cast(T, raw.lower() in env.__truthy__)
         elif self.type in (list, tuple, set):
             collection = raw.split(env.__item_separator__)
-            if self.map is not None:
-                collection = map(self.map, collection)
-            return cast(T, self.type(collection))  # type: ignore[call-arg]
+            return cast(T, self.type(collection if self.map is None else map(self.map, collection)))  # type: ignore[call-arg, arg-type]
         elif self.type is dict:
             d = dict(
-                _.split(env.__value_separator__, maxsplit=1)
+                _.split(env.__value_separator__, 1)
                 for _ in raw.split(env.__item_separator__)
             )
             if self.map is not None:
                 d = dict(self.map(*_) for _ in d.items())
             return cast(T, d)
+
+        if _check_type(raw, self.type):
+            return cast(T, raw)
+
+        if hasattr(self.type, "__origin__") and self.type.__origin__ is Union:  # type: ignore[attr-defined]
+            for t in self.type.__args__:  # type: ignore[attr-defined]
+                try:
+                    return cast(T, t(raw))
+                except TypeError:
+                    pass
 
         return self.type(raw)  # type: ignore[call-arg]
 
@@ -128,7 +150,7 @@ class DerivedVariable(Generic[T]):
     def __call__(self, env):
         # type: (Env) -> T
         value = self.derivation(env)
-        if not isinstance(value, self.type):
+        if not _check_type(value, self.type):
             raise TypeError(
                 "derivation returned type {} instead of {}".format(
                     type(value), self.type
