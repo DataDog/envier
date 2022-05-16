@@ -2,6 +2,7 @@ import os
 from typing import Callable
 from typing import Dict
 from typing import Generic
+from typing import Iterator
 from typing import List
 from typing import Optional
 from typing import Tuple
@@ -217,6 +218,18 @@ class Env(object):
 
     v = var
     d = der
+
+    @classmethod
+    def keys(cls):
+        # type: () -> Iterator[str]
+        """Return the names of all the items."""
+        return (
+            k
+            for k, v in cls.__dict__.items()
+            if isinstance(v, (EnvVariable, DerivedVariable))
+            or isinstance(v, type)
+            and issubclass(v, Env)
+        )
 
     @classmethod
     def include(cls, env_spec, namespace=None, overwrite=False):

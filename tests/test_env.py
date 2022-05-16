@@ -147,7 +147,9 @@ def test_env_nested_config(monkeypatch):
 
         service = ServiceConfig
 
-    assert GlobalConfig().service.port == 8080
+    config = GlobalConfig()
+    assert set(config.keys()) == {"debug_mode", "service"}
+    assert config.service.port == 8080
 
 
 def test_env_include():
