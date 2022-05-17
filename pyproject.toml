@@ -8,6 +8,8 @@ version_scheme = "release-branch-semver"
 [tool.mypy]
 files = "envier/*.py"
 show_error_codes = true
+plugins = "envier.mypy"
+ignore_missing_imports = true
 
 [tool.black]
 exclude = '''

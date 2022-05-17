@@ -35,17 +35,17 @@ def _normalized(name):
 
 
 def _check_type(value, _type):
-    # type: (Any, Type[T]) -> bool
+    # type: (Any, Union[object, Type[T]]) -> bool
     if hasattr(_type, "__origin__"):
-        return isinstance(value, _type.__args__)  # type: ignore[attr-defined]
+        return isinstance(value, _type.__args__)  # type: ignore[attr-defined,union-attr]
 
-    return isinstance(value, _type)
+    return isinstance(value, _type)  # type: ignore[arg-type]
 
 
 class EnvVariable(Generic[T]):
     def __init__(
         self,
-        type,  # type: Type[T]
+        type,  # type: Union[object, Type[T]]
         name,  # type: str
         parser=None,  # type: Optional[Callable[[str], T]]
         map=None,  # type: Optional[MapType]
@@ -53,12 +53,12 @@ class EnvVariable(Generic[T]):
         deprecations=None,  # type: Optional[List[DeprecationInfo]]
     ):
         # type: (...) -> None
-        if hasattr(type, "__origin__") and type.__origin__ is Union:  # type: ignore[attr-defined]
-            if not isinstance(default, type.__args__):  # type: ignore[attr-defined]
+        if hasattr(type, "__origin__") and type.__origin__ is Union:  # type: ignore[attr-defined,union-attr]
+            if not isinstance(default, type.__args__):  # type: ignore[attr-defined,union-attr]
                 raise TypeError(
-                    "default must be either of these types {}".format(type.__args__)  # type: ignore[attr-defined]
+                    "default must be either of these types {}".format(type.__args__)  # type: ignore[attr-defined,union-attr]
                 )
-        elif default is not NoDefault and not isinstance(default, type):
+        elif default is not NoDefault and not isinstance(default, type):  # type: ignore[arg-type]
             raise TypeError("default must be of type {}".format(type))
         self.type = type
         self.name = name
@@ -118,7 +118,7 @@ class EnvVariable(Generic[T]):
             return cast(T, raw.lower() in env.__truthy__)
         elif self.type in (list, tuple, set):
             collection = raw.split(env.__item_separator__)
-            return cast(T, self.type(collection if self.map is None else map(self.map, collection)))  # type: ignore[call-arg, arg-type]
+            return cast(T, self.type(collection if self.map is None else map(self.map, collection)))  # type: ignore[call-arg,arg-type,operator]
         elif self.type is dict:
             d = dict(
                 _.split(env.__value_separator__, 1)
@@ -131,14 +131,14 @@ class EnvVariable(Generic[T]):
         if _check_type(raw, self.type):
             return cast(T, raw)
 
-        if hasattr(self.type, "__origin__") and self.type.__origin__ is Union:  # type: ignore[attr-defined]
-            for t in self.type.__args__:  # type: ignore[attr-defined]
+        if hasattr(self.type, "__origin__") and self.type.__origin__ is Union:  # type: ignore[attr-defined,union-attr]
+            for t in self.type.__args__:  # type: ignore[attr-defined,union-attr]
                 try:
                     return cast(T, t(raw))
                 except TypeError:
                     pass
 
-        return self.type(raw)  # type: ignore[call-arg]
+        return self.type(raw)  # type: ignore[call-arg,operator]
 
 
 class DerivedVariable(Generic[T]):
@@ -234,12 +234,27 @@ class Env(object):
         return EnvVariable(type, name, parser, map, default, deprecations)
 
     @classmethod
+    def v(
+        cls,
+        type,  # type: Union[object, Type[T]]
+        name,  # type: str
+        parser=None,  # type: Optional[Callable[[str], T]]
+        map=None,  # type: Optional[MapType]
+        default=NoDefault,  # type: Union[T, NoDefaultType]
+        deprecations=None,  # type: Optional[List[DeprecationInfo]]
+    ):
+        # type: (...) -> EnvVariable[T]
+        return EnvVariable(type, name, parser, map, default, deprecations)
+
+    @classmethod
     def der(cls, type, derivation):
         # type: (Type[T], Callable[[Env], T]) -> DerivedVariable[T]
         return DerivedVariable(type, derivation)
 
-    v = var
-    d = der
+    @classmethod
+    def d(cls, type, derivation):
+        # type: (Type[T], Callable[[Env], T]) -> DerivedVariable[T]
+        return DerivedVariable(type, derivation)
 
     @classmethod
     def keys(cls):
