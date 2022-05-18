@@ -57,6 +57,14 @@ Configurations can also be nested to create namespaces:
 ~~~
 
 
+## Type Checking
+
+The library ships with a `mypy` plugin to allow for type checking. If you want
+to use it, either install the library with the `mypy` extra or ensure that
+`mypy` is installed, and then add `envier.mypy` to the list of extra plugins in
+the `mypy` configuration.
+
+
 ## Roadmap
 
 - Add support for environment files.

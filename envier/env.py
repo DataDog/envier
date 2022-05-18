@@ -1,7 +1,9 @@
 import os
+from typing import Any
 from typing import Callable
 from typing import Dict
 from typing import Generic
+from typing import Iterator
 from typing import List
 from typing import Optional
 from typing import Tuple
@@ -21,6 +23,10 @@ DeprecationInfo = Tuple[str, str, str]
 
 
 T = TypeVar("T")
+K = TypeVar("K")
+V = TypeVar("V")
+
+MapType = Union[Callable[[str], V], Callable[[str, str], Tuple[K, V]]]
 
 
 def _normalized(name):
@@ -28,14 +34,36 @@ def _normalized(name):
     return name.upper().replace(".", "_").rstrip("_")
 
 
+def _check_type(value, _type):
+    # type: (Any, Union[object, Type[T]]) -> bool
+    if hasattr(_type, "__origin__"):
+        return isinstance(value, _type.__args__)  # type: ignore[attr-defined,union-attr]
+
+    return isinstance(value, _type)  # type: ignore[arg-type]
+
+
 class EnvVariable(Generic[T]):
-    def __init__(self, type, name, parser=None, default=NoDefault, deprecations=None):
-        # type: (Type[T], str, Optional[Callable[[str], T]], Union[T, NoDefaultType], Optional[List[DeprecationInfo]]) -> None
-        if default is not NoDefault and not isinstance(default, type):
+    def __init__(
+        self,
+        type,  # type: Union[object, Type[T]]
+        name,  # type: str
+        parser=None,  # type: Optional[Callable[[str], T]]
+        map=None,  # type: Optional[MapType]
+        default=NoDefault,  # type: Union[T, NoDefaultType]
+        deprecations=None,  # type: Optional[List[DeprecationInfo]]
+    ):
+        # type: (...) -> None
+        if hasattr(type, "__origin__") and type.__origin__ is Union:  # type: ignore[attr-defined,union-attr]
+            if not isinstance(default, type.__args__):  # type: ignore[attr-defined,union-attr]
+                raise TypeError(
+                    "default must be either of these types {}".format(type.__args__)  # type: ignore[attr-defined,union-attr]
+                )
+        elif default is not NoDefault and not isinstance(default, type):  # type: ignore[arg-type]
             raise TypeError("default must be of type {}".format(type))
         self.type = type
         self.name = name
         self.parser = parser
+        self.map = map
         self.default = default
         self.deprecations = deprecations
 
@@ -78,7 +106,7 @@ class EnvVariable(Generic[T]):
 
         if self.parser is not None:
             parsed = self.parser(raw)
-            if type(parsed) is not self.type:
+            if not _check_type(parsed, self.type):
                 raise TypeError(
                     "parser returned type {} instead of {}".format(
                         type(parsed), self.type
@@ -88,8 +116,29 @@ class EnvVariable(Generic[T]):
 
         if self.type is bool:
             return cast(T, raw.lower() in env.__truthy__)
+        elif self.type in (list, tuple, set):
+            collection = raw.split(env.__item_separator__)
+            return cast(T, self.type(collection if self.map is None else map(self.map, collection)))  # type: ignore[call-arg,arg-type,operator]
+        elif self.type is dict:
+            d = dict(
+                _.split(env.__value_separator__, 1)
+                for _ in raw.split(env.__item_separator__)
+            )
+            if self.map is not None:
+                d = dict(self.map(*_) for _ in d.items())
+            return cast(T, d)
 
-        return self.type(raw)  # type: ignore[call-arg]
+        if _check_type(raw, self.type):
+            return cast(T, raw)
+
+        if hasattr(self.type, "__origin__") and self.type.__origin__ is Union:  # type: ignore[attr-defined,union-attr]
+            for t in self.type.__args__:  # type: ignore[attr-defined,union-attr]
+                try:
+                    return cast(T, t(raw))
+                except TypeError:
+                    pass
+
+        return self.type(raw)  # type: ignore[call-arg,operator]
 
 
 class DerivedVariable(Generic[T]):
@@ -101,7 +150,7 @@ class DerivedVariable(Generic[T]):
     def __call__(self, env):
         # type: (Env) -> T
         value = self.derivation(env)
-        if not isinstance(value, self.type):
+        if not _check_type(value, self.type):
             raise TypeError(
                 "derivation returned type {} instead of {}".format(
                     type(value), self.type
@@ -129,10 +178,21 @@ class Env(object):
     passing a custom parser to the variable declaration, or by overriding the
     ``__truthy__`` class attribute, which is a set of lower-case strings that
     are considered to be a representation of ``True``.
+
+    There is also basic support for collections. An item of type ``list``,
+    ``tuple`` or ``set`` will be parsed using ``,`` as item separator.
+    Similarly, an item of type ``dict`` will be parsed with ``,`` as item
+    separator, and ``:`` as value separator. These can be changed by overriding
+    the ``__item_separator__`` and ``__value_separator__`` class attributes
+    respectively. All the elements in the collections, including key and values
+    for dictionaries, will be of type string. For more advanced control over
+    the final type, a custom ``parser`` can be passed instead.
     """
 
     __truthy__ = frozenset({"1", "true", "yes", "on"})
     __prefix__ = ""
+    __item_separator__ = ","
+    __value_separator__ = ":"
 
     def __init__(self, source=None, parent=None):
         # type: (Optional[Dict[str, str]], Optional[Env]) -> None
@@ -161,11 +221,82 @@ class Env(object):
             setattr(self, n, d(self))
 
     @classmethod
-    def var(cls, type, name, parser=None, default=NoDefault, deprecations=None):
-        # type: (Type[T], str, Optional[Callable[[str], T]], Union[T, NoDefaultType], Optional[List[DeprecationInfo]]) -> EnvVariable[T]
-        return EnvVariable(type, name, parser, default, deprecations)
+    def var(
+        cls,
+        type,  # type: Type[T]
+        name,  # type: str
+        parser=None,  # type: Optional[Callable[[str], T]]
+        map=None,  # type: Optional[MapType]
+        default=NoDefault,  # type: Union[T, NoDefaultType]
+        deprecations=None,  # type: Optional[List[DeprecationInfo]]
+    ):
+        # type: (...) -> EnvVariable[T]
+        return EnvVariable(type, name, parser, map, default, deprecations)
+
+    @classmethod
+    def v(
+        cls,
+        type,  # type: Union[object, Type[T]]
+        name,  # type: str
+        parser=None,  # type: Optional[Callable[[str], T]]
+        map=None,  # type: Optional[MapType]
+        default=NoDefault,  # type: Union[T, NoDefaultType]
+        deprecations=None,  # type: Optional[List[DeprecationInfo]]
+    ):
+        # type: (...) -> EnvVariable[T]
+        return EnvVariable(type, name, parser, map, default, deprecations)
 
     @classmethod
     def der(cls, type, derivation):
         # type: (Type[T], Callable[[Env], T]) -> DerivedVariable[T]
         return DerivedVariable(type, derivation)
+
+    @classmethod
+    def d(cls, type, derivation):
+        # type: (Type[T], Callable[[Env], T]) -> DerivedVariable[T]
+        return DerivedVariable(type, derivation)
+
+    @classmethod
+    def keys(cls):
+        # type: () -> Iterator[str]
+        """Return the names of all the items."""
+        return (
+            k
+            for k, v in cls.__dict__.items()
+            if isinstance(v, (EnvVariable, DerivedVariable))
+            or isinstance(v, type)
+            and issubclass(v, Env)
+        )
+
+    @classmethod
+    def include(cls, env_spec, namespace=None, overwrite=False):
+        # type: (Type[Env], Optional[str], bool) -> None
+        """Include variables from another Env subclass.
+
+        The new items can be merged at the top level, or parented to a
+        namespace. By default, the method raises a ``ValueError`` if the
+        operation would result in some variables being overwritten. This can
+        be disabled by setting the ``overwrite`` argument to ``True``.
+        """
+        if namespace is not None:
+            if not overwrite and hasattr(cls, namespace):
+                raise ValueError("Namespace already in use: {}".format(namespace))
+
+            setattr(cls, namespace, env_spec)
+
+        # Pick only the attributes that define variables.
+        to_include = {
+            k: v
+            for k, v in env_spec.__dict__.items()
+            if isinstance(v, (EnvVariable, DerivedVariable))
+            or isinstance(v, type)
+            and issubclass(v, Env)
+        }
+
+        if not overwrite:
+            overlap = set(cls.__dict__.keys()) & set(to_include.keys())
+            if overlap:
+                raise ValueError("Configuration clashes detected: {}".format(overlap))
+
+        for k, v in to_include.items():
+            setattr(cls, k, v)

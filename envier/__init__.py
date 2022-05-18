@@ -1,4 +1,5 @@
 from envier.env import Env
 
 
-__all__ = ["Env"]
+En = Env
+__all__ = ["En", "Env"]

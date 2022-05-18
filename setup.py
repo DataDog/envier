@@ -28,6 +28,7 @@ setup(
     packages=find_packages(exclude=["tests*"]),
     python_requires=">=2.7",
     install_requires=[],
+    extras_require={"mypy": ["mypy"]},
     setup_requires=["setuptools_scm"],
     use_scm_version=True,
     # Required for mypy compatibility, see

@@ -1,3 +1,5 @@
+from ast import Sub
+
 from riot import Venv
 from riot import latest
 
@@ -8,9 +10,15 @@ venv = Venv(
     venvs=[
         Venv(
             name="tests",
+            venvs=[
+                Venv(
+                    pkgs={"mypy": latest},
+                    pys=SUPPORTED_PYTHON_VERSIONS[2:],
+                ),
+                Venv(pys=SUPPORTED_PYTHON_VERSIONS[:2]),
+            ],
             pkgs={"pytest": latest},
             command="pytest {cmdargs}",
-            pys=SUPPORTED_PYTHON_VERSIONS,
         ),
         Venv(
             name="black",
