@@ -22,10 +22,14 @@ def test_types():
     assert code != 0
     assert (
         out.decode()
-        == """tests/types_test.py:28: error: Incompatible types in assignment (expression has type "int", variable has type "str")  [assignment]
-tests/types_test.py:29: error: Incompatible types in assignment (expression has type "str", variable has type "CustomObject")  [assignment]
-tests/types_test.py:30: error: Incompatible types in assignment (expression has type "bool", variable has type "Optional[str]")  [assignment]
-tests/types_test.py:31: error: Incompatible types in assignment (expression has type "bytes", variable has type "Optional[CustomObject]")  [assignment]
-Found 4 errors in 1 file (checked 1 source file)
+        == """tests/types_test.py:43: error: Incompatible types in assignment (expression has type "int", variable has type "str")  [assignment]
+tests/types_test.py:44: error: Incompatible types in assignment (expression has type "str", variable has type "CustomObject")  [assignment]
+tests/types_test.py:45: error: Incompatible types in assignment (expression has type "bool", variable has type "Optional[str]")  [assignment]
+tests/types_test.py:46: error: Incompatible types in assignment (expression has type "bytes", variable has type "Optional[CustomObject]")  [assignment]
+tests/types_test.py:48: error: Incompatible types in assignment (expression has type "int", variable has type "str")  [assignment]
+tests/types_test.py:49: error: Incompatible types in assignment (expression has type "str", variable has type "CustomObject")  [assignment]
+tests/types_test.py:50: error: Incompatible types in assignment (expression has type "bool", variable has type "Optional[str]")  [assignment]
+tests/types_test.py:51: error: Incompatible types in assignment (expression has type "bytes", variable has type "Optional[CustomObject]")  [assignment]
+Found 8 errors in 1 file (checked 1 source file)
 """
     )

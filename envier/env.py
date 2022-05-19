@@ -191,6 +191,7 @@ class Env(object):
 
     __truthy__ = frozenset({"1", "true", "yes", "on"})
     __prefix__ = ""
+    __item__ = None  # type: Optional[str]
     __item_separator__ = ","
     __value_separator__ = ":"
 
@@ -209,10 +210,15 @@ class Env(object):
 
         self.spec = self.__class__
         derived = []
-        for name, e in self.__class__.__dict__.items():
+        for name, e in list(self.__class__.__dict__.items()):
             if isinstance(e, EnvVariable):
                 setattr(self, name, e(self, self._full_prefix))
             elif isinstance(e, type) and issubclass(e, Env):
+                if e.__item__ is not None:
+                    # Move the subclass to the __item__ attribute
+                    setattr(self.spec, e.__item__, e)
+                    delattr(self.spec, name)
+                    name = e.__item__
                 setattr(self, name, e(source, self))
             elif isinstance(e, DerivedVariable):
                 derived.append((name, e))

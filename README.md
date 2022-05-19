@@ -56,6 +56,30 @@ Configurations can also be nested to create namespaces:
 3000
 ~~~
 
+The same configuration can be obtained with implicit nesting by declaring the
+`ServiceConfig` subclass inside `GlobalConfig`, and setting the class attribute
+`__item__` to the name of the item the sub-configuration should be assigned to,
+viz.
+
+~~~ python
+>>> from envier import Env
+>>> 
+>>> class GlobalConfig(Env):
+>>>     __prefix__ = "myapp"
+>>>     
+>>>     debug_mode = Env.var(bool, "debug", default=False)
+>>> 
+>>>     class ServiceConfig(Env):
+>>>         __item__ = __prefix__ = "service"
+>>>         
+>>>         host = Env.var(str, "host", default="localhost")
+>>>         port = Env.var(int, "port", default=3000)
+>>> 
+>>> config = GlobalConfig()
+>>> config.service.port
+3000
+~~~
+
 
 ## Type Checking
 
