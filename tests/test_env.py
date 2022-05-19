@@ -154,6 +154,25 @@ def test_env_nested_config(monkeypatch):
     assert config.service.port == 8080
 
 
+def test_env_implicit_nested_config(monkeypatch):
+    monkeypatch.setenv("MYAPP_SERVICE_PORT", "8080")
+
+    class GlobalConfig(Env):
+        __prefix__ = "myapp"
+
+        debug_mode = Env.var(bool, "debug", default=False)
+
+        class ServiceConfig(Env):
+            __item__ = __prefix__ = "service"
+
+            host = Env.var(str, "host", default="localhost")
+            port = Env.var(int, "port", default=3000)
+
+    config = GlobalConfig()
+    assert set(config.keys()) == {"debug_mode", "service"}
+    assert config.service.port == 8080
+
+
 def test_env_include():
     class GlobalConfig(Env):
         __prefix__ = "myapp"
