@@ -71,10 +71,12 @@ class EnvVariable(Generic[T]):
         # type: (Env, str) -> T
         source = env.source
 
-        raw = source.get(prefix + _normalized(self.name))
+        full_name = prefix + _normalized(self.name)
+        raw = source.get(full_name)
         if raw is None and self.deprecations:
             for name, deprecated_when, removed_when in self.deprecations:
-                raw = source.get(prefix + _normalized(name))
+                full_deprecated_name = prefix + _normalized(name)
+                raw = source.get(full_deprecated_name)
                 if raw is not None:
                     deprecated_when_message = (
                         " in version %s" % deprecated_when
@@ -89,10 +91,10 @@ class EnvVariable(Generic[T]):
                     warnings.warn(
                         "%s has been deprecated%s%s. Use %s instead"
                         % (
-                            name,
+                            full_deprecated_name,
                             deprecated_when_message,
                             removed_when_message,
-                            self.name,
+                            full_name,
                         ),
                         DeprecationWarning,
                     )
@@ -102,7 +104,7 @@ class EnvVariable(Generic[T]):
             if not isinstance(self.default, NoDefaultType):
                 return self.default
 
-            raise KeyError("{} is not set".format(self.name))
+            raise KeyError("{} is not set".format(full_name))
 
         if self.parser is not None:
             parsed = self.parser(raw)
