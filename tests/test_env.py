@@ -34,34 +34,41 @@ def test_env_missing_mandatory():
         Config()
 
 
+@pytest.mark.parametrize("prefix", ["", "myapp"])
 @pytest.mark.parametrize(
     "deprecations,match",
     [
         (
             [("OLD_FOO", "0.1", "1.0")],
-            "OLD_FOO has been deprecated in version 0.1 and will be removed in version 1.0. Use FOO instead",
+            "has been deprecated in version 0.1 and will be removed in version 1.0.",
         ),
         (
             [("OLD_FOO", None, "1.0")],
-            "OLD_FOO has been deprecated and will be removed in version 1.0. Use FOO instead",
+            "has been deprecated and will be removed in version 1.0.",
         ),
         (
             [("OLD_FOO", "0.1", None)],
-            "OLD_FOO has been deprecated in version 0.1. Use FOO instead",
+            "has been deprecated in version 0.1.",
         ),
         (
             [("OLD_FOO", None, None)],
-            "OLD_FOO has been deprecated. Use FOO instead",
+            "has been deprecated.",
         ),
     ],
 )
-def test_env_deprecations(monkeypatch, deprecations, match):
-    monkeypatch.setenv("OLD_FOO", "42")
+def test_env_deprecations(monkeypatch, deprecations, match, prefix):
+    full_deprecated_name = "_".join((prefix.upper(), "OLD_FOO")).strip("_")
+    full_name = "_".join((prefix.upper(), "FOO")).strip("_")
+
+    monkeypatch.setenv(full_deprecated_name, "42")
 
     class Config(Env):
+        __prefix__ = prefix
+
         foo = Env.var(int, "FOO", deprecations=deprecations)
 
-    with pytest.warns(DeprecationWarning, match=match):
+    message = " ".join((full_deprecated_name, match, "Use %s instead" % full_name))
+    with pytest.warns(DeprecationWarning, match=message):
         assert Config().foo == 42
 
 
