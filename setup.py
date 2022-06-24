@@ -27,7 +27,7 @@ setup(
     license="MIT",
     packages=find_packages(exclude=["tests*"]),
     python_requires=">=2.7",
-    install_requires=[],
+    install_requires=["typing; python_version<'3.5'"],
     extras_require={"mypy": ["mypy"]},
     setup_requires=["setuptools_scm"],
     use_scm_version=True,
