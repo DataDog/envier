@@ -311,3 +311,29 @@ def test_env_derived_optional(monkeypatch, value):
         foo = Env.der(Optional[int], lambda _: value)
 
     assert DictConfig().foo is value
+
+
+@pytest.mark.parametrize(
+    "value,exc",
+    [
+        (0, None),
+        (512, None),
+        (-1, ValueError),
+        (513, ValueError),
+    ],
+)
+def test_env_validator(monkeypatch, value, exc):
+    monkeypatch.setenv("FOO", str(value))
+
+    class Config(Env):
+        def validate(value):
+            if not (0 <= value <= 512):
+                raise ValueError("Value must be between 0 and 512")
+
+        foo = Env.var(int, "FOO", validator=validate)
+
+    if exc is not None:
+        with pytest.raises(exc):
+            Config()
+    else:
+        assert Config().foo == value
