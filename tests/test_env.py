@@ -243,6 +243,10 @@ def test_env_include_namespace(monkeypatch):
 
     assert GlobalConfig().service.host == "example.com"
 
+    # Check that we are not including configuration elsewhere
+    with pytest.raises(AttributeError):
+        GlobalConfig().host
+
 
 @pytest.mark.parametrize(
     "map,expected",
