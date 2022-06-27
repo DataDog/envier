@@ -292,6 +292,8 @@ class Env(object):
 
             setattr(cls, namespace, env_spec)
 
+            return None
+
         # Pick only the attributes that define variables.
         to_include = {
             k: v
