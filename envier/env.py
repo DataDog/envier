@@ -48,6 +48,7 @@ class EnvVariable(Generic[T]):
         type,  # type: Union[object, Type[T]]
         name,  # type: str
         parser=None,  # type: Optional[Callable[[str], T]]
+        validator=None,  # type: Optional[Callable[[T], None]]
         map=None,  # type: Optional[MapType]
         default=NoDefault,  # type: Union[T, NoDefaultType]
         deprecations=None,  # type: Optional[List[DeprecationInfo]]
@@ -63,11 +64,12 @@ class EnvVariable(Generic[T]):
         self.type = type
         self.name = name
         self.parser = parser
+        self.validator = validator
         self.map = map
         self.default = default
         self.deprecations = deprecations
 
-    def __call__(self, env, prefix):
+    def _retrieve(self, env, prefix):
         # type: (Env, str) -> T
         source = env.source
 
@@ -141,6 +143,15 @@ class EnvVariable(Generic[T]):
                     pass
 
         return self.type(raw)  # type: ignore[call-arg,operator]
+
+    def __call__(self, env, prefix):
+        # type: (Env, str) -> T
+        value = self._retrieve(env, prefix)
+
+        if self.validator is not None:
+            self.validator(value)
+
+        return value
 
 
 class DerivedVariable(Generic[T]):
@@ -234,12 +245,13 @@ class Env(object):
         type,  # type: Type[T]
         name,  # type: str
         parser=None,  # type: Optional[Callable[[str], T]]
+        validator=None,  # type: Optional[Callable[[T], None]]
         map=None,  # type: Optional[MapType]
         default=NoDefault,  # type: Union[T, NoDefaultType]
         deprecations=None,  # type: Optional[List[DeprecationInfo]]
     ):
         # type: (...) -> EnvVariable[T]
-        return EnvVariable(type, name, parser, map, default, deprecations)
+        return EnvVariable(type, name, parser, validator, map, default, deprecations)
 
     @classmethod
     def v(
@@ -247,12 +259,13 @@ class Env(object):
         type,  # type: Union[object, Type[T]]
         name,  # type: str
         parser=None,  # type: Optional[Callable[[str], T]]
+        validator=None,  # type: Optional[Callable[[T], None]]
         map=None,  # type: Optional[MapType]
         default=NoDefault,  # type: Union[T, NoDefaultType]
         deprecations=None,  # type: Optional[List[DeprecationInfo]]
     ):
         # type: (...) -> EnvVariable[T]
-        return EnvVariable(type, name, parser, map, default, deprecations)
+        return EnvVariable(type, name, parser, validator, map, default, deprecations)
 
     @classmethod
     def der(cls, type, derivation):
