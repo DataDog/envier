@@ -140,11 +140,14 @@ def test_env_prefix(monkeypatch):
     assert Config().foo == 24
 
 
-def test_env_nested_config(monkeypatch):
-    monkeypatch.setenv("MYAPP_SERVICE_PORT", "8080")
+@pytest.mark.parametrize(
+    "prefix,var", [("", "MYAPP_PORT"), ("service", "MYAPP_SERVICE_PORT")]
+)
+def test_env_nested_config(monkeypatch, prefix, var):
+    monkeypatch.setenv(var, "8080")
 
     class ServiceConfig(Env):
-        __prefix__ = "service"
+        __prefix__ = prefix
 
         host = Env.var(str, "host", default="localhost")
         port = Env.var(int, "port", default=3000)

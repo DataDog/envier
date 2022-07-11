@@ -218,7 +218,7 @@ class Env(object):
         ) + _normalized(
             self.__prefix__
         )  # type: str
-        if self._full_prefix:
+        if self._full_prefix and not self._full_prefix.endswith("_"):
             self._full_prefix += "_"
 
         self.spec = self.__class__
