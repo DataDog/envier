@@ -42,89 +42,43 @@ class GlobalConfig(Env):
         )
 
 
-def test_help_rst_list_table(monkeypatch):
+def test_help_info(monkeypatch):
     monkeypatch.setenv("MYAPP_NO_DEFAULT", "1")
 
-    assert (
-        GlobalConfig.rst_list_table()
-        == """.. list-table::
-    :widths: 3 1 1 4
-    :header-rows: 1
-
-    * - Variable Name
-      - Type
-      - Default value
-      - Description
-
-        .. myapp-debug
-    * - ``MYAPP_DEBUG``
-      - Boolean
-      - False
-      - Whether to enable debug logging.
-
-        .. myapp-no-default
-    * - ``MYAPP_NO_DEFAULT``
-      - Boolean
-      - 
-      - A variable with no default value, which makes it mandatory.
-
-        .. myapp-url
-    * - ``MYAPP_URL``
-      - String
-      - http://localhost:5000
-      - The URL of the application. The URL of the application. The URL of the
-        application. The URL of the application. The URL of the application. The
-        URL of the application. The URL of the application. The URL of the
-        application. The URL of the application. The URL of the application.
-"""
-    )
+    assert GlobalConfig.help_info() == [
+        ("``MYAPP_DEBUG``", "Boolean", "False", "Whether to enable debug logging."),
+        (
+            "``MYAPP_NO_DEFAULT``",
+            "Boolean",
+            "",
+            "A variable with no default value, which makes it mandatory.",
+        ),
+        (
+            "``MYAPP_URL``",
+            "String",
+            "http://localhost:5000",
+            "The URL of the application. The URL of the application. The URL of the application. The URL of the application. The URL of the application. The URL of the application. The URL of the application. The URL of the application. The URL of the application. The URL of the application.",
+        ),
+    ]
 
 
-def test_help_rst_list_table_recursive(monkeypatch):
+def test_help_info_recursive(monkeypatch):
     monkeypatch.setenv("MYAPP_NO_DEFAULT", "1")
 
-    assert (
-        GlobalConfig.rst_list_table(recursive=True)
-        == """.. list-table::
-    :widths: 3 1 1 4
-    :header-rows: 1
-
-    * - Variable Name
-      - Type
-      - Default value
-      - Description
-
-        .. myapp-debug
-    * - ``MYAPP_DEBUG``
-      - Boolean
-      - False
-      - Whether to enable debug logging.
-
-        .. myapp-no-default
-    * - ``MYAPP_NO_DEFAULT``
-      - Boolean
-      - 
-      - A variable with no default value, which makes it mandatory.
-
-        .. myapp-url
-    * - ``MYAPP_URL``
-      - String
-      - http://localhost:5000
-      - The URL of the application. The URL of the application. The URL of the
-        application. The URL of the application. The URL of the application. The
-        URL of the application. The URL of the application. The URL of the
-        application. The URL of the application. The URL of the application.
-
-        .. myapp-service-host
-    * - ``MYAPP_SERVICE_HOST``
-      - ``str``
-      - localhost
-      - The host of the service.
-
-        .. myapp-service-port
-    * - ``MYAPP_SERVICE_PORT``
-      - ``int``
-      - 3000
-      - The port of the service.
-"""
-    )
+    assert GlobalConfig.help_info(recursive=True) == [
+        ("``MYAPP_DEBUG``", "Boolean", "False", "Whether to enable debug logging."),
+        (
+            "``MYAPP_NO_DEFAULT``",
+            "Boolean",
+            "",
+            "A variable with no default value, which makes it mandatory.",
+        ),
+        (
+            "``MYAPP_URL``",
+            "String",
+            "http://localhost:5000",
+            "The URL of the application. The URL of the application. The URL of the application. The URL of the application. The URL of the application. The URL of the application. The URL of the application. The URL of the application. The URL of the application. The URL of the application.",
+        ),
+        ("``MYAPP_SERVICE_HOST``", "``str``", "localhost", "The host of the service."),
+        ("``MYAPP_SERVICE_PORT``", "``int``", "3000", "The port of the service."),
+    ]

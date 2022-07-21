@@ -13,8 +13,6 @@ from typing import Union
 from typing import cast
 import warnings
 
-from envier.help import RstListTable
-
 
 class NoDefaultType(object):
     def __str__(self):
@@ -30,6 +28,7 @@ K = TypeVar("K")
 V = TypeVar("V")
 
 MapType = Union[Callable[[str], V], Callable[[str, str], Tuple[K, V]]]
+HelpInfo = Tuple[str, str, str, str]
 
 
 def _normalized(name):
@@ -359,20 +358,18 @@ class Env(object):
             setattr(cls, k, v)
 
     @classmethod
-    def rst_list_table(
-        cls, width=80, widths=(3, 1, 1, 4), header=True, recursive=False
-    ):
-        # type: (int, Tuple[int, int, int, int], bool, bool) -> str
+    def help_info(cls, recursive=False):
+        # type: (bool) -> List[HelpInfo]
         """Return a ReStructuredText list table representation of the variables.
 
         This method can be used to auto-generate configuration documentation.
         """
-        table = RstListTable(width, widths, header)
+        entries = []
 
-        def add_vars_to_table(config):
-            # type: (Env) -> None
+        def add_entries(full_prefix, config):
+            # type: (str, Env) -> None
             vars = sorted(
-                (_ for _ in config.spec.values() if isinstance(_, EnvVariable)),
+                (_ for _ in config.values() if isinstance(_, EnvVariable)),
                 key=lambda v: v.name,
             )
 
@@ -382,32 +379,36 @@ class Env(object):
                 if help_message and not help_message.endswith("."):
                     help_message += "."
 
-                table.add_row(
-                    config._full_prefix + _normalized(v.name),
-                    v.help_type or "``%s``" % v.type.__name__,  # type: ignore[attr-defined]
-                    help_message,
-                    v.help_default or str(v.default),
+                entries.append(
+                    (
+                        "``" + full_prefix + _normalized(v.name) + "``",
+                        v.help_type or "``%s``" % v.type.__name__,  # type: ignore[attr-defined]
+                        v.help_default or str(v.default),
+                        help_message,
+                    )
                 )
 
-        configs = [cls()]
+        configs = [("", cls)]
 
         while configs:
-            config = configs.pop()
-
-            add_vars_to_table(config)
+            full_prefix, config = configs.pop()
+            new_prefix = full_prefix + _normalized(config.__prefix__)
+            if not new_prefix.endswith("_"):
+                new_prefix += "_"
+            add_entries(new_prefix, config)
 
             if not recursive:
                 break
 
             subconfigs = sorted(
                 (
-                    v
+                    (new_prefix, v)
                     for k, v in config.__dict__.items()
-                    if isinstance(v, Env) and k != "parent"
+                    if isinstance(v, type) and issubclass(v, Env) and k != "parent"
                 ),
-                key=lambda _: _._full_prefix,
+                key=lambda _: _[1].__prefix__,
             )
 
             configs[0:0] = subconfigs  # DFS
 
-        return str(table)
+        return entries
