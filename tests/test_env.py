@@ -140,11 +140,14 @@ def test_env_prefix(monkeypatch):
     assert Config().foo == 24
 
 
-def test_env_nested_config(monkeypatch):
-    monkeypatch.setenv("MYAPP_SERVICE_PORT", "8080")
+@pytest.mark.parametrize(
+    "prefix,var", [("", "MYAPP_PORT"), ("service", "MYAPP_SERVICE_PORT")]
+)
+def test_env_nested_config(monkeypatch, prefix, var):
+    monkeypatch.setenv(var, "8080")
 
     class ServiceConfig(Env):
-        __prefix__ = "service"
+        __prefix__ = prefix
 
         host = Env.var(str, "host", default="localhost")
         port = Env.var(int, "port", default=3000)
@@ -243,6 +246,10 @@ def test_env_include_namespace(monkeypatch):
 
     assert GlobalConfig().service.host == "example.com"
 
+    # Check that we are not including configuration elsewhere
+    with pytest.raises(AttributeError):
+        GlobalConfig().host
+
 
 @pytest.mark.parametrize(
     "map,expected",
@@ -311,3 +318,29 @@ def test_env_derived_optional(monkeypatch, value):
         foo = Env.der(Optional[int], lambda _: value)
 
     assert DictConfig().foo is value
+
+
+@pytest.mark.parametrize(
+    "value,exc",
+    [
+        (0, None),
+        (512, None),
+        (-1, ValueError),
+        (513, ValueError),
+    ],
+)
+def test_env_validator(monkeypatch, value, exc):
+    monkeypatch.setenv("FOO", str(value))
+
+    class Config(Env):
+        def validate(value):
+            if not (0 <= value <= 512):
+                raise ValueError("Value must be between 0 and 512")
+
+        foo = Env.var(int, "FOO", validator=validate)
+
+    if exc is not None:
+        with pytest.raises(exc):
+            Config()
+    else:
+        assert Config().foo == value

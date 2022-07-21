@@ -50,6 +50,7 @@ class EnvVariable(Generic[T]):
         type,  # type: Union[object, Type[T]]
         name,  # type: str
         parser=None,  # type: Optional[Callable[[str], T]]
+        validator=None,  # type: Optional[Callable[[T], None]]
         map=None,  # type: Optional[MapType]
         default=NoDefault,  # type: Union[T, NoDefaultType]
         deprecations=None,  # type: Optional[List[DeprecationInfo]]
@@ -69,6 +70,7 @@ class EnvVariable(Generic[T]):
         self.type = type
         self.name = name
         self.parser = parser
+        self.validator = validator
         self.map = map
         self.default = default
         self.deprecations = deprecations
@@ -77,7 +79,7 @@ class EnvVariable(Generic[T]):
         self.help_type = help_type
         self.help_default = help_default
 
-    def __call__(self, env, prefix):
+    def _retrieve(self, env, prefix):
         # type: (Env, str) -> T
         source = env.source
 
@@ -152,6 +154,15 @@ class EnvVariable(Generic[T]):
 
         return self.type(raw)  # type: ignore[call-arg,operator]
 
+    def __call__(self, env, prefix):
+        # type: (Env, str) -> T
+        value = self._retrieve(env, prefix)
+
+        if self.validator is not None:
+            self.validator(value)
+
+        return value
+
 
 class DerivedVariable(Generic[T]):
     def __init__(self, type, derivation):
@@ -217,7 +228,7 @@ class Env(object):
         ) + _normalized(
             self.__prefix__
         )  # type: str
-        if self._full_prefix:
+        if self._full_prefix and not self._full_prefix.endswith("_"):
             self._full_prefix += "_"
 
         self.spec = self.__class__
@@ -244,6 +255,7 @@ class Env(object):
         type,  # type: Type[T]
         name,  # type: str
         parser=None,  # type: Optional[Callable[[str], T]]
+        validator=None,  # type: Optional[Callable[[T], None]]
         map=None,  # type: Optional[MapType]
         default=NoDefault,  # type: Union[T, NoDefaultType]
         deprecations=None,  # type: Optional[List[DeprecationInfo]]
@@ -256,6 +268,7 @@ class Env(object):
             type,
             name,
             parser,
+            validator,
             map,
             default,
             deprecations,
@@ -270,6 +283,7 @@ class Env(object):
         type,  # type: Union[object, Type[T]]
         name,  # type: str
         parser=None,  # type: Optional[Callable[[str], T]]
+        validator=None,  # type: Optional[Callable[[T], None]]
         map=None,  # type: Optional[MapType]
         default=NoDefault,  # type: Union[T, NoDefaultType]
         deprecations=None,  # type: Optional[List[DeprecationInfo]]
@@ -282,6 +296,7 @@ class Env(object):
             type,
             name,
             parser,
+            validator,
             map,
             default,
             deprecations,
@@ -339,6 +354,8 @@ class Env(object):
                 raise ValueError("Namespace already in use: {}".format(namespace))
 
             setattr(cls, namespace, env_spec)
+
+            return None
 
         # Pick only the attributes that define variables.
         to_include = {

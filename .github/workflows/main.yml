@@ -67,4 +67,5 @@ jobs:
       - name: Run tests
         run: |
           python3.9 -m pip install riot
-          riot -v run --python=${{ matrix.python-version }} test
+          riot -v run --python=${{ matrix.python-version }} smoke-test
+          riot -v run --python=${{ matrix.python-version }} tests

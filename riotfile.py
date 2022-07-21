@@ -22,6 +22,11 @@ venv = Venv(
             command="pytest {cmdargs}",
         ),
         Venv(
+            name="smoke-test",
+            command="python -c 'import envier'",
+            pys=SUPPORTED_PYTHON_VERSIONS,
+        ),
+        Venv(
             name="black",
             pkgs={"black": latest},
             command="black {cmdargs}",
