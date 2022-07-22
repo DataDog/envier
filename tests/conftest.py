@@ -1,4 +1,9 @@
-try:
+import sys
+
+
+if sys.version_info >= (3, 6):
+    # DEV: We are not running the Sphinx extension tests on Python < 3.6 due to
+    # lack of support.
     import pytest
     from sphinx.testing.path import path
 
@@ -7,10 +12,3 @@ try:
     @pytest.fixture(scope="session")
     def rootdir():
         return path(__file__).parent.abspath() / "sphinx"
-
-
-except ImportError:
-    import sys
-
-    if sys.version_info >= (3, 6):
-        raise

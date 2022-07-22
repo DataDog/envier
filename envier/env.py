@@ -377,14 +377,19 @@ class Env(object):
     @classmethod
     def help_info(cls, recursive=False):
         # type: (bool) -> List[HelpInfo]
-        """Return a ReStructuredText list table representation of the variables.
+        """Extract the help information from the class.
 
-        This method can be used to auto-generate configuration documentation.
+        Returns a list of all the environment variables declared by the class.
+        The format of each entry is a tuple consisting of the variable name (in
+        double backtics quotes), the type, the default value, and the help text.
+
+        Set ``recursive`` to ``True`` to include variables from nested Env
+        classes.
         """
         entries = []
 
         def add_entries(full_prefix, config):
-            # type: (str, Env) -> None
+            # type: (str, Type[Env]) -> None
             vars = sorted(
                 (_ for _ in config.values() if isinstance(_, EnvVariable)),
                 key=lambda v: v.name,
