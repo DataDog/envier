@@ -15,7 +15,8 @@ import warnings
 
 
 class NoDefaultType(object):
-    pass
+    def __str__(self):
+        return ""
 
 
 NoDefault = NoDefaultType()
@@ -27,6 +28,7 @@ K = TypeVar("K")
 V = TypeVar("V")
 
 MapType = Union[Callable[[str], V], Callable[[str, str], Tuple[K, V]]]
+HelpInfo = Tuple[str, str, str, str]
 
 
 def _normalized(name):
@@ -52,6 +54,9 @@ class EnvVariable(Generic[T]):
         map=None,  # type: Optional[MapType]
         default=NoDefault,  # type: Union[T, NoDefaultType]
         deprecations=None,  # type: Optional[List[DeprecationInfo]]
+        help=None,  # type: Optional[str]
+        help_type=None,  # type: Optional[str]
+        help_default=None,  # type: Optional[str]
     ):
         # type: (...) -> None
         if hasattr(type, "__origin__") and type.__origin__ is Union:  # type: ignore[attr-defined,union-attr]
@@ -61,6 +66,7 @@ class EnvVariable(Generic[T]):
                 )
         elif default is not NoDefault and not isinstance(default, type):  # type: ignore[arg-type]
             raise TypeError("default must be of type {}".format(type))
+
         self.type = type
         self.name = name
         self.parser = parser
@@ -68,6 +74,10 @@ class EnvVariable(Generic[T]):
         self.map = map
         self.default = default
         self.deprecations = deprecations
+
+        self.help = help
+        self.help_type = help_type
+        self.help_default = help_default
 
     def _retrieve(self, env, prefix):
         # type: (Env, str) -> T
@@ -227,7 +237,7 @@ class Env(object):
             if isinstance(e, EnvVariable):
                 setattr(self, name, e(self, self._full_prefix))
             elif isinstance(e, type) and issubclass(e, Env):
-                if e.__item__ is not None:
+                if e.__item__ is not None and e.__item__ != name:
                     # Move the subclass to the __item__ attribute
                     setattr(self.spec, e.__item__, e)
                     delattr(self.spec, name)
@@ -249,9 +259,23 @@ class Env(object):
         map=None,  # type: Optional[MapType]
         default=NoDefault,  # type: Union[T, NoDefaultType]
         deprecations=None,  # type: Optional[List[DeprecationInfo]]
+        help=None,  # type: Optional[str]
+        help_type=None,  # type: Optional[str]
+        help_default=None,  # type: Optional[str]
     ):
         # type: (...) -> EnvVariable[T]
-        return EnvVariable(type, name, parser, validator, map, default, deprecations)
+        return EnvVariable(
+            type,
+            name,
+            parser,
+            validator,
+            map,
+            default,
+            deprecations,
+            help,
+            help_type,
+            help_default,
+        )
 
     @classmethod
     def v(
@@ -263,9 +287,23 @@ class Env(object):
         map=None,  # type: Optional[MapType]
         default=NoDefault,  # type: Union[T, NoDefaultType]
         deprecations=None,  # type: Optional[List[DeprecationInfo]]
+        help=None,  # type: Optional[str]
+        help_type=None,  # type: Optional[str]
+        help_default=None,  # type: Optional[str]
     ):
         # type: (...) -> EnvVariable[T]
-        return EnvVariable(type, name, parser, validator, map, default, deprecations)
+        return EnvVariable(
+            type,
+            name,
+            parser,
+            validator,
+            map,
+            default,
+            deprecations,
+            help,
+            help_type,
+            help_default,
+        )
 
     @classmethod
     def der(cls, type, derivation):
@@ -284,6 +322,18 @@ class Env(object):
         return (
             k
             for k, v in cls.__dict__.items()
+            if isinstance(v, (EnvVariable, DerivedVariable))
+            or isinstance(v, type)
+            and issubclass(v, Env)
+        )
+
+    @classmethod
+    def values(cls):
+        # type: () -> Iterator[Union[EnvVariable, DerivedVariable, Type[Env]]]
+        """Return the names of all the items."""
+        return (
+            v
+            for v in cls.__dict__.values()
             if isinstance(v, (EnvVariable, DerivedVariable))
             or isinstance(v, type)
             and issubclass(v, Env)
@@ -323,3 +373,64 @@ class Env(object):
 
         for k, v in to_include.items():
             setattr(cls, k, v)
+
+    @classmethod
+    def help_info(cls, recursive=False):
+        # type: (bool) -> List[HelpInfo]
+        """Extract the help information from the class.
+
+        Returns a list of all the environment variables declared by the class.
+        The format of each entry is a tuple consisting of the variable name (in
+        double backtics quotes), the type, the default value, and the help text.
+
+        Set ``recursive`` to ``True`` to include variables from nested Env
+        classes.
+        """
+        entries = []
+
+        def add_entries(full_prefix, config):
+            # type: (str, Type[Env]) -> None
+            vars = sorted(
+                (_ for _ in config.values() if isinstance(_, EnvVariable)),
+                key=lambda v: v.name,
+            )
+
+            for v in vars:
+                # Add a period at the end if necessary.
+                help_message = v.help.strip() if v.help is not None else ""
+                if help_message and not help_message.endswith("."):
+                    help_message += "."
+
+                entries.append(
+                    (
+                        "``" + full_prefix + _normalized(v.name) + "``",
+                        v.help_type or "``%s``" % v.type.__name__,  # type: ignore[attr-defined]
+                        v.help_default or str(v.default),
+                        help_message,
+                    )
+                )
+
+        configs = [("", cls)]
+
+        while configs:
+            full_prefix, config = configs.pop()
+            new_prefix = full_prefix + _normalized(config.__prefix__)
+            if not new_prefix.endswith("_"):
+                new_prefix += "_"
+            add_entries(new_prefix, config)
+
+            if not recursive:
+                break
+
+            subconfigs = sorted(
+                (
+                    (new_prefix, v)
+                    for k, v in config.__dict__.items()
+                    if isinstance(v, type) and issubclass(v, Env) and k != "parent"
+                ),
+                key=lambda _: _[1].__prefix__,
+            )
+
+            configs[0:0] = subconfigs  # DFS
+
+        return entries
