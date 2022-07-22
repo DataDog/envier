@@ -35,7 +35,7 @@ venv = Venv(
         Venv(
             name="mypy",
             pkgs={"mypy": latest},
-            command="mypy {cmdargs}",
+            command="mypy --install-types --non-interactive {cmdargs}",
             pys=["3"],
         ),
         Venv(
