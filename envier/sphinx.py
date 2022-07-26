@@ -21,8 +21,12 @@ def _parse(cell):
     return doc.children
 
 
-def _create_row(cells):
+def _create_row(cells, add_id=True):
     row = nodes.row()
+
+    if add_id:
+        row["ids"] += [cells[0].strip("``").rstrip("``").lower().replace("_", "-")]
+
     for cell in cells:
         entry = nodes.entry()
         entry += _parse(cell)
@@ -71,7 +75,7 @@ class Envier(Directive):
         # Table heading
         if has_header:
             thead = nodes.thead()
-            thead += _create_row(head)
+            thead += _create_row(head, add_id=False)
             tgroup += thead
 
         # Table body
