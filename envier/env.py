@@ -401,11 +401,22 @@ class Env(object):
                 if help_message and not help_message.endswith("."):
                     help_message += "."
 
+                if v.help_type is not None:
+                    help_type = v.help_type
+                else:
+                    try:
+                        help_type = "``%s``" % v.type.__name__  # type: ignore[attr-defined]
+                    except AttributeError:
+                        # typing.Union[<type>, NoneType]
+                        help_type = v.type.__args__[0].__name__  # type: ignore[attr-defined]
+
                 entries.append(
                     (
                         "``" + full_prefix + _normalized(v.name) + "``",
-                        v.help_type or "``%s``" % v.type.__name__,  # type: ignore[attr-defined]
-                        v.help_default or str(v.default),
+                        help_type,  # type: ignore[attr-defined]
+                        v.help_default
+                        if v.help_default is not None
+                        else str(v.default),
                         help_message,
                     )
                 )
