@@ -4,7 +4,7 @@ from sys import version_info as PY
 import pytest
 
 
-@pytest.mark.skipif(PY < (3, 6), reason="requires Python 3.6+")
+@pytest.mark.skipif(PY < (3, 7), reason="requires Python 3.7+")
 def test(app, rootdir):
     app.build()
 
