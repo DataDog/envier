@@ -41,7 +41,7 @@ venv = Venv(
         Venv(
             name="flake8",
             pkgs={
-                "flake8": latest,
+                "flake8": "<5",
                 "flake8-isort": latest,
             },
             command="flake8 {cmdargs}",

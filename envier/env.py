@@ -116,7 +116,9 @@ class EnvVariable(Generic[T]):
             if not isinstance(self.default, NoDefaultType):
                 return self.default
 
-            raise KeyError("{} is not set".format(full_name))
+            raise KeyError(
+                "Mandatory environment variable {} is not set".format(full_name)
+            )
 
         if self.parser is not None:
             parsed = self.parser(raw)
@@ -159,7 +161,13 @@ class EnvVariable(Generic[T]):
         value = self._retrieve(env, prefix)
 
         if self.validator is not None:
-            self.validator(value)
+            try:
+                self.validator(value)
+            except ValueError as e:
+                full_name = prefix + _normalized(self.name)
+                raise ValueError(
+                    "Invalid value for environment variable %s: %s" % (full_name, e)
+                )
 
         return value
 
