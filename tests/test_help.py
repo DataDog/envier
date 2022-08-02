@@ -16,7 +16,7 @@ class GlobalConfig(Env):
         "url",
         default="http://localhost:5000",
         help_type="String",
-        help="The URL of the application. " * 10,
+        help="The URL of the application.",
     )
     no_default = Env.var(
         str,
@@ -57,7 +57,7 @@ def test_help_info(monkeypatch):
             "``MYAPP_URL``",
             "String",
             "http://localhost:5000",
-            "The URL of the application. The URL of the application. The URL of the application. The URL of the application. The URL of the application. The URL of the application. The URL of the application. The URL of the application. The URL of the application. The URL of the application.",
+            "The URL of the application.",
         ),
     ]
 
@@ -77,7 +77,7 @@ def test_help_info_recursive(monkeypatch):
             "``MYAPP_URL``",
             "String",
             "http://localhost:5000",
-            "The URL of the application. The URL of the application. The URL of the application. The URL of the application. The URL of the application. The URL of the application. The URL of the application. The URL of the application. The URL of the application. The URL of the application.",
+            "The URL of the application.",
         ),
         ("``MYAPP_SERVICE_HOST``", "``str``", "localhost", "The host of the service."),
         ("``MYAPP_SERVICE_PORT``", "``int``", "3000", "The port of the service."),

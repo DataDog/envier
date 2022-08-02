@@ -1,7 +1,6 @@
 import sys
 
 from docutils import nodes
-from docutils.frontend import OptionParser
 from docutils.parsers.rst import Directive
 from docutils.parsers.rst import Parser
 from docutils.utils import new_document
@@ -12,26 +11,6 @@ def asbool(argument):
 
 
 RST_PARSER = Parser()
-RST_PARSER_SETTINGS = OptionParser(components=(Parser,)).get_default_values()
-
-
-def _parse(cell):
-    doc = new_document("", RST_PARSER_SETTINGS)
-    RST_PARSER.parse(cell, doc)
-    return doc.children
-
-
-def _create_row(cells, add_id=True):
-    row = nodes.row()
-
-    if add_id:
-        row["ids"] += [cells[0].strip("``").rstrip("``").lower().replace("_", "-")]
-
-    for cell in cells:
-        entry = nodes.entry()
-        entry += _parse(cell)
-        row += entry
-    return row
 
 
 class Envier(Directive):
@@ -42,6 +21,27 @@ class Envier(Directive):
         "heading": asbool,
         "recursive": asbool,
     }
+
+    def _parse(self, cell):
+        doc = new_document("", self.state.document.settings)
+        RST_PARSER.parse(cell, doc)
+        return doc.children
+
+    def _create_row(self, cells, add_id=True):
+        row = nodes.row()
+
+        if add_id:
+            _id = cells[0].strip("``").rstrip("``").lower().replace("_", "-")
+
+            target = nodes.target()
+            self.state.add_target(_id, "", target, self.state_machine.abs_line_number())
+            row["ids"] += [_id]
+
+        for cell in cells:
+            entry = nodes.entry()
+            entry += self._parse(cell)
+            row += entry
+        return row
 
     def run(self):
         module_name, _, config_class = self.arguments[0].partition(":")
@@ -75,14 +75,14 @@ class Envier(Directive):
         # Table heading
         if has_header:
             thead = nodes.thead()
-            thead += _create_row(head, add_id=False)
+            thead += self._create_row(head, add_id=False)
             tgroup += thead
 
         # Table body
         tbody = nodes.tbody()
         tgroup += tbody
         for row in config_spec.help_info(recursive=recursive):
-            tbody += _create_row(row)
+            tbody += self._create_row(row)
 
         return [table]
 
