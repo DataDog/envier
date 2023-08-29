@@ -33,6 +33,15 @@ venv = Venv(
             pys=["3"],
         ),
         Venv(
+            name="fmt",
+            pkgs={
+                "black": latest,
+                "isort": latest,
+            },
+            command="black . && isort .",
+            pys=["3"],
+        ),
+        Venv(
             name="mypy",
             pkgs={"mypy": latest},
             command="mypy --install-types --non-interactive {cmdargs}",

@@ -110,6 +110,34 @@ configuration.
    :recursive: true
 ~~~
 
+## Development
+
+`riot` is used to run development commands:
+
+```
+pip install riot
+```
+
+
+### Run tests
+
+```
+riot run test
+
+# only run the tests against a specific python version
+riot run -p2.7 -p3.8 test
+```
+
+
+### Lint, format, typecheck code
+
+```sh
+riot run -s flake8  # lint
+riot run -s fmt  # format
+riot run -s mypy  # typecheck
+```
+
+
 ## Roadmap
 
 - Add support for environment files.
