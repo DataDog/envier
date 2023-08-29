@@ -6,6 +6,11 @@ with open("README.md", "r") as f:
     long_description = f.read()
 
 
+with open("tests/.python-version", "r") as f:
+    python_versions = sorted(f.read().splitlines())
+
+min_python_version = python_versions[0].split(".")
+
 setup(
     name="envier",
     description="Python application configuration via the environment",
@@ -14,19 +19,16 @@ setup(
     author_email="dev@datadoghq.com",
     classifiers=[
         "Programming Language :: Python",
-        "Programming Language :: Python :: 2.7",
-        "Programming Language :: Python :: 3.5",
-        "Programming Language :: Python :: 3.6",
-        "Programming Language :: Python :: 3.7",
-        "Programming Language :: Python :: 3.8",
-        "Programming Language :: Python :: 3.9",
-        "Programming Language :: Python :: 3.10",
+    ]
+    + [
+        "Programming Language :: Python :: %s.%s" % (v[0], v[1])
+        for v in [v.split(".") for v in python_versions]
     ],
     long_description=long_description,
     long_description_content_type="text/markdown",
     license="MIT",
     packages=find_packages(exclude=["tests*"]),
-    python_requires=">=2.7",
+    python_requires=">=%s.%s" % (min_python_version[0], min_python_version[1]),
     install_requires=["typing; python_version<'3.5'"],
     extras_require={"mypy": ["mypy"]},
     setup_requires=["setuptools_scm"],
