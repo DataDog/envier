@@ -1,10 +1,13 @@
+from collections import defaultdict
 import os
 from typing import Any
 from typing import Callable
+from typing import DefaultDict
 from typing import Dict
 from typing import Generic
 from typing import Iterator
 from typing import List
+from typing import Literal
 from typing import Optional
 from typing import Tuple
 from typing import Type
@@ -80,15 +83,15 @@ class EnvVariable(Generic[T]):
         self.help_default = help_default
 
     def _retrieve(self, env, prefix):
-        # type: (Env, str) -> T
-        source = env.source
+        # type: (Env, str) -> Tuple[ConfigSourceType, T]
+        env_source = env.env_source
 
         full_name = prefix + _normalized(self.name)
-        raw = source.get(full_name)
+        raw = env_source.get(full_name)
         if raw is None and self.deprecations:
             for name, deprecated_when, removed_when in self.deprecations:
                 full_deprecated_name = prefix + _normalized(name)
-                raw = source.get(full_deprecated_name)
+                raw = env_source.get(full_deprecated_name)
                 if raw is not None:
                     deprecated_when_message = (
                         " in version %s" % deprecated_when
@@ -114,12 +117,13 @@ class EnvVariable(Generic[T]):
 
         if raw is None:
             if not isinstance(self.default, NoDefaultType):
-                return self.default
+                return "default", self.default
 
             raise KeyError(
                 "Mandatory environment variable {} is not set".format(full_name)
             )
 
+        value = raw  # type: Union[T, str]
         if self.parser is not None:
             parsed = self.parser(raw)
             if not _check_type(parsed, self.type):
@@ -128,13 +132,13 @@ class EnvVariable(Generic[T]):
                         type(parsed), self.type
                     )
                 )
-            return parsed
+            return "environment", parsed  # type: ignore[return-value]
 
         if self.type is bool:
-            return cast(T, raw.lower() in env.__truthy__)
+            value = cast(T, raw.lower() in env.__truthy__)
         elif self.type in (list, tuple, set):
             collection = raw.split(env.__item_separator__)
-            return cast(T, self.type(collection if self.map is None else map(self.map, collection)))  # type: ignore[call-arg,arg-type,operator]
+            value = cast(T, self.type(collection if self.map is None else map(self.map, collection)))  # type: ignore[call-arg,arg-type,operator]
         elif self.type is dict:
             d = dict(
                 _.split(env.__value_separator__, 1)
@@ -142,23 +146,24 @@ class EnvVariable(Generic[T]):
             )
             if self.map is not None:
                 d = dict(self.map(*_) for _ in d.items())
-            return cast(T, d)
+            value = cast(T, d)
 
         if _check_type(raw, self.type):
-            return cast(T, raw)
+            value = cast(T, raw)
 
         if hasattr(self.type, "__origin__") and self.type.__origin__ is Union:  # type: ignore[attr-defined,union-attr]
             for t in self.type.__args__:  # type: ignore[attr-defined,union-attr]
                 try:
-                    return cast(T, t(raw))
+                    value = cast(T, t(raw))
                 except TypeError:
                     pass
 
-        return self.type(raw)  # type: ignore[call-arg,operator]
+        return "environment", value  # type: ignore[call-arg,operator]
+        # return "environment", self.type(value)  # type: ignore[call-arg,operator]
 
     def __call__(self, env, prefix):
-        # type: (Env, str) -> T
-        value = self._retrieve(env, prefix)
+        # type: (Env, str) -> Tuple[ConfigSourceType, T]
+        source, value = self._retrieve(env, prefix)
 
         if self.validator is not None:
             try:
@@ -169,7 +174,7 @@ class EnvVariable(Generic[T]):
                     "Invalid value for environment variable %s: %s" % (full_name, e)
                 )
 
-        return value
+        return source, value
 
 
 class DerivedVariable(Generic[T]):
@@ -188,6 +193,37 @@ class DerivedVariable(Generic[T]):
                 )
             )
         return value
+
+
+ConfigSourceType = Literal["default", "environment", "programmatic"]
+
+
+class _EnvSource(object):
+    _sentinel = object()
+
+    def __init__(self, source_precedence):
+        # type: (List[ConfigSourceType]) -> None
+        self._source_precedence = source_precedence
+        self._sources = {}  # type: Dict[ConfigSourceType, Any]
+        for s in self._source_precedence:
+            self._sources[s] = self._sentinel
+
+    def set_source(self, source, value):
+        # type: (ConfigSourceType, Any) -> None
+        self._sources[source] = value
+
+    def value(self):
+        for s in self._source_precedence:
+            if self._sources[s] is not self._sentinel:
+                return self._sources[s]
+        return None
+
+    def value_source_type(self):
+        # type: () -> ConfigSourceType
+        for s in self._source_precedence:
+            if self._sources[s] is not self._sentinel:
+                return s
+        raise ValueError("No source set for setting")
 
 
 class Env(object):
@@ -226,9 +262,20 @@ class Env(object):
     __item_separator__ = ","
     __value_separator__ = ":"
 
-    def __init__(self, source=None, parent=None):
+    def __init__(self, env_source=None, parent=None):
         # type: (Optional[Dict[str, str]], Optional[Env]) -> None
-        self.source = source or os.environ
+        # Has to come first to avoid issues with __setattr__
+        self._items = defaultdict(
+            lambda: _EnvSource(
+                [
+                    "programmatic",
+                    "environment",
+                    "default",
+                ]
+            )
+        )  # type: DefaultDict[str, _EnvSource]
+
+        self.env_source = env_source or os.environ
         self.parent = parent
 
         self._full_prefix = (
@@ -243,19 +290,43 @@ class Env(object):
         derived = []
         for name, e in list(self.__class__.__dict__.items()):
             if isinstance(e, EnvVariable):
-                setattr(self, name, e(self, self._full_prefix))
+                source, v = e(self, self._full_prefix)
+                self.set_attr_source_value(name, source, v)
             elif isinstance(e, type) and issubclass(e, Env):
                 if e.__item__ is not None and e.__item__ != name:
                     # Move the subclass to the __item__ attribute
                     setattr(self.spec, e.__item__, e)
                     delattr(self.spec, name)
                     name = e.__item__
-                setattr(self, name, e(source, self))
+                setattr(self, name, e(env_source, self))
             elif isinstance(e, DerivedVariable):
                 derived.append((name, e))
 
         for n, d in derived:
             setattr(self, n, d(self))
+
+    def __setattr__(self, name, value):
+        if name != "_items":
+            self._items[name].set_source("programmatic", value)
+        super(Env, self).__setattr__(name, value)
+
+    def set_attr_source_value(self, name, source, value):
+        # type: (str, ConfigSourceType, Any) -> None
+        self._items[name].set_source(source, value)
+        super(Env, self).__setattr__(name, value)
+
+    def source_type(self, name):
+        # type: (str) -> ConfigSourceType
+        return self._items[name].value_source_type()
+
+    def __getitem__(self, item):
+        # type: (str) -> Any
+        if item in self._items:
+            return self._items[item].value()
+        raise AttributeError(item)
+
+    def __contains__(self, item):
+        return item in self._items
 
     @classmethod
     def var(

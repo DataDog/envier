@@ -344,3 +344,39 @@ def test_env_validator(monkeypatch, value, exc):
             Config()
     else:
         assert Config().foo == value
+
+
+def test_getitem():
+    class Config(Env):
+        foo = Env.var(int, "FOO", default=42)
+
+    assert Config()["foo"] == 42
+
+
+def test_env_multi_source(monkeypatch):
+    """Ensure multiple sources are supported."""
+
+    class Config(Env):
+        foo = Env.var(int, "FOO", default=0)
+
+    # Test the default source.
+    cfg = Config()
+    assert cfg.foo == 0
+    assert cfg.source_type("foo") == "default"
+    cfg.set_attr_source_value("foo", "default", 5)
+    assert cfg.foo == 5
+
+    # Test the environment source.
+    monkeypatch.setenv("FOO", "1")
+    cfg = Config()
+    assert cfg.foo == 1
+    assert cfg.source_type("foo") == "environment"
+    cfg.set_attr_source_value("foo", "environment", 6)
+    assert cfg.foo == 6
+
+    # Test the programmatic source.
+    cfg.foo = 2
+    assert cfg.foo == 2
+    assert cfg.source_type("foo") == "programmatic"
+    cfg.set_attr_source_value("foo", "programmatic", 10)
+    assert cfg.foo == 10
