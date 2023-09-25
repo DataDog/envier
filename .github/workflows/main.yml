@@ -46,4 +46,10 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - run: docker run --rm -v $PWD:/work/envier -w /work/envier ghcr.io/kyle-verhoog/envier/test:a0e8d6f38400e8bf21fc0e30ccba4001a6885884 bash -c "git config --global --add safe.directory '*' && riot -v run smoke-test && riot -v run tests"
+      - run: |
+          docker run \
+            --rm \
+            -v $PWD:/work/envier \
+            -w /work/envier \
+            ghcr.io/kyle-verhoog/envier/test:a0e8d6f38400e8bf21fc0e30ccba4001a6885884 \
+            bash -c "riot -v run smoke-test && riot -v run tests"
