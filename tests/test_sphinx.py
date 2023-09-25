@@ -1,4 +1,3 @@
-from filecmp import cmp
 from sys import version_info as PY
 
 import pytest
@@ -11,4 +10,10 @@ def test(app, rootdir):
     reference = rootdir / "test-root" / "_build" / "index.html"
     generated = app.outdir / "index.html"
 
-    assert cmp(reference, generated)
+    with open(reference) as f:
+        reference = f.read()
+
+    with open(generated) as f:
+        generated = f.read()
+
+    assert reference == generated
