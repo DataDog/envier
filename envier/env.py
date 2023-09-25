@@ -251,9 +251,18 @@ class Env(object):
                     delattr(self.spec, name)
                     name = e.__item__
                 setattr(self, name, e(source, self))
+            elif isinstance(e, list):
+                for var in e:
+                    try:
+                        val = var(self, self._full_prefix)
+                    except KeyError:
+                        continue
+                    else:
+                        if val is not None:
+                            setattr(self, e[-1].name, val)
+                            break
             elif isinstance(e, DerivedVariable):
                 derived.append((name, e))
-
         for n, d in derived:
             setattr(self, n, d(self))
 
@@ -262,6 +271,7 @@ class Env(object):
         cls,
         type,  # type: Type[T]
         name,  # type: str
+        env_vars=None,  # type: Optional[List[EnvVariable]]
         parser=None,  # type: Optional[Callable[[str], T]]
         validator=None,  # type: Optional[Callable[[T], None]]
         map=None,  # type: Optional[MapType]
@@ -271,8 +281,8 @@ class Env(object):
         help_type=None,  # type: Optional[str]
         help_default=None,  # type: Optional[str]
     ):
-        # type: (...) -> EnvVariable[T]
-        return EnvVariable(
+        # type: (...) -> Union[EnvVariable[T], List[EnvVariable[T]]]
+        e = EnvVariable(
             type,
             name,
             parser,
@@ -284,6 +294,14 @@ class Env(object):
             help_type,
             help_default,
         )
+        if env_vars:
+            for ev in env_vars:
+                ev.validator = ev.validator or validator
+                ev.map = ev.map or map
+                ev.parser = ev.parser or parser
+            env_vars.append(e)
+            return env_vars
+        return e
 
     @classmethod
     def v(

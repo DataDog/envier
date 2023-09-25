@@ -4,6 +4,8 @@ import pytest
 
 from envier import En
 from envier import Env
+from envier.env import EnvVariable
+
 
 
 def test_env_default():
@@ -344,3 +346,48 @@ def test_env_validator(monkeypatch, value, exc):
             Config()
     else:
         assert Config().foo == value
+
+
+def test_env_multi_env(monkeypatch):
+
+    def _parse_from_tags(tags):
+        return dict([t.split(":") for t in tags.split(",")]).get("service")
+
+    def _validator(s):
+        if not s.isalpha():
+            raise ValueError("Service name must be alphanumeric")
+
+    class Config(Env):
+        __prefix__ = "dd"
+
+        service = Env.var(
+            str,
+            "service",
+            env_vars=[
+                EnvVariable(str, "service"),
+                EnvVariable(str, "tags", parser=_parse_from_tags),
+            ],
+            validator=_validator,
+            default="defaultservice",
+        )
+
+    c = Config()
+    assert c.service == "defaultservice"
+
+    # Ensure validation works on all env vars
+    with pytest.raises(ValueError):
+        monkeypatch.setenv("DD_TAGS", "service:*&$#badservice")
+        Config()
+
+    monkeypatch.setenv("DD_TAGS", "service:testservice,env:test-env")
+    c = Config()
+    assert c.service == "testservice"
+
+    # Ensure validation works on all env vars
+    with pytest.raises(ValueError):
+        monkeypatch.setenv("DD_SERVICE", "!@#badservice")
+        Config()
+
+    monkeypatch.setenv("DD_SERVICE", "service")
+    c = Config()
+    assert c.service == "service"
