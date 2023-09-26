@@ -51,5 +51,5 @@ jobs:
             --rm \
             -v $PWD:/work/envier \
             -w /work/envier \
-            ghcr.io/kyle-verhoog/envier/test:a0e8d6f38400e8bf21fc0e30ccba4001a6885884 \
+            ghcr.io/datadog/envier/test:3f7d59e9cdb7b31259a3b1202b89fd0df3c2a3bc \
             bash -c "riot -v run smoke-test && riot -v run tests"
