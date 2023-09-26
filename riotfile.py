@@ -1,18 +1,8 @@
-import sys
-
 from riot import Venv
 from riot import latest
 
 
-# Add the current directory to the path so _version.py can be imported.
-sys.path.insert(0, ".")
-from _version import Version  # noqa: E402
-
-with open("tests/.python-version", "r") as f:
-    SUPPORTED_PYTHON_VERSIONS = [
-        "%s.%s" % (v.major, v.minor)
-        for v in sorted(map(Version, f.read().splitlines()))
-    ]
+SUPPORTED_PYTHON_VERSIONS = ["2.7", "3.5", "3.6", "3.7", "3.8", "3.9", "3.10", "3.11"]
 
 venv = Venv(
     venvs=[
@@ -25,19 +15,9 @@ venv = Venv(
                         "sphinx": "==5.1.1",
                         "alabaster": "==0.7.12",
                     },
-                    pys=[
-                        p
-                        for p in SUPPORTED_PYTHON_VERSIONS
-                        if Version(p) >= Version("3.6")
-                    ],
+                    pys=SUPPORTED_PYTHON_VERSIONS[2:],
                 ),
-                Venv(
-                    pys=[
-                        p
-                        for p in SUPPORTED_PYTHON_VERSIONS
-                        if Version(p) <= Version("3.5")
-                    ],
-                ),
+                Venv(pys=SUPPORTED_PYTHON_VERSIONS[:2]),
             ],
             pkgs={"pytest": latest},
             command="pytest {cmdargs}",
