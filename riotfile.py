@@ -1,15 +1,16 @@
+from packaging.version import Version
 from riot import Venv
 from riot import latest
 
 
 with open("tests/.python-version", "r") as f:
     SUPPORTED_PYTHON_VERSIONS = [
-        "%s.%s" % (v[0], v[1])
-        for v in [v.split(".") for v in sorted(f.read().splitlines())]
+        "%s.%s" % (v.major, v.minor)
+        for v in sorted(map(Version, f.read().splitlines()))
     ]
 
-
 venv = Venv(
+    pkgs={"packaging": latest},
     venvs=[
         Venv(
             name="tests",
@@ -20,10 +21,18 @@ venv = Venv(
                         "sphinx": "==5.1.1",
                         "alabaster": "==0.7.12",
                     },
-                    pys=[p for p in SUPPORTED_PYTHON_VERSIONS if p >= "3.6"],
+                    pys=[
+                        p
+                        for p in SUPPORTED_PYTHON_VERSIONS
+                        if Version(p) >= Version("3.6")
+                    ],
                 ),
                 Venv(
-                    pys=[p for p in SUPPORTED_PYTHON_VERSIONS if p <= "3.5"],
+                    pys=[
+                        p
+                        for p in SUPPORTED_PYTHON_VERSIONS
+                        if Version(p) <= Version("3.5")
+                    ],
                 ),
             ],
             pkgs={"pytest": latest},
