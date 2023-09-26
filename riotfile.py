@@ -11,8 +11,9 @@ venv = Venv(
             venvs=[
                 Venv(
                     pkgs={
-                        "mypy": latest,
-                        "sphinx": latest,
+                        "mypy": "==0.961",
+                        "sphinx": "==5.1.1",
+                        "alabaster": "==0.7.12",
                     },
                     pys=SUPPORTED_PYTHON_VERSIONS[2:],
                 ),
