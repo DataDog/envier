@@ -1,7 +1,12 @@
-from packaging.version import Version
+import sys
+
 from riot import Venv
 from riot import latest
 
+
+# Add the current directory to the path so _version.py can be imported.
+sys.path.insert(0, ".")
+from _version import Version  # noqa: E402
 
 with open("tests/.python-version", "r") as f:
     SUPPORTED_PYTHON_VERSIONS = [
@@ -10,7 +15,6 @@ with open("tests/.python-version", "r") as f:
     ]
 
 venv = Venv(
-    pkgs={"packaging": latest},
     venvs=[
         Venv(
             name="tests",
