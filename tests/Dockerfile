@@ -26,7 +26,7 @@ RUN \
       libsqlite3-dev \
   && rm -rf /var/lib/apt/lists/*
 
-RUN git clone --depth 1 --branch v2.3.21 https://github.com/pyenv/pyenv "${PYENV_ROOT}" \
+RUN git clone --depth 1 --branch v2.3.31 https://github.com/pyenv/pyenv "${PYENV_ROOT}" \
   && cd /work \
   && pyenv local | xargs -L 1 pyenv install \
   && cd -
