@@ -377,6 +377,6 @@ def test_env_multi_source(monkeypatch):
     # Test the programmatic source.
     cfg.foo = 2
     assert cfg.foo == 2
-    assert cfg.source_type("foo") == "programmatic"
-    cfg.set_attr_source_value("foo", "programmatic", 10)
+    assert cfg.source_type("foo") == "code"
+    cfg.set_attr_source_value("foo", "code", 10)
     assert cfg.foo == 10

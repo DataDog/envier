@@ -199,7 +199,7 @@ class DerivedVariable(Generic[T]):
         return value
 
 
-ConfigSourceType = Literal["default", "environment", "programmatic"]
+ConfigSourceType = Literal["default", "environment", "code"]
 
 
 class _EnvSource(object):
@@ -272,9 +272,9 @@ class Env(object):
         self._items = defaultdict(
             lambda: _EnvSource(
                 [
-                    "programmatic",
                     "environment",
                     "default",
+                    "code",
                 ]
             )
         )  # type: DefaultDict[str, _EnvSource]
@@ -311,7 +311,7 @@ class Env(object):
 
     def __setattr__(self, name, value):
         if name != "_items":
-            self._items[name].set_source("programmatic", value)
+            self._items[name].set_source("code", value)
         super(Env, self).__setattr__(name, value)
 
     def set_attr_source_value(self, name, source, value):
