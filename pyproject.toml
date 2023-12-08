@@ -1,9 +1,45 @@
 [build-system]
-requires = ["setuptools >= 40.6.0", "setuptools_scm"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
 
-[tool.setuptools_scm]
-version_scheme = "release-branch-semver"
+[project]
+name = "envier"
+dynamic = ["version"]
+description = "Python application configuration via the environment"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.7"
+authors = [
+    { name = "Datadog", email = "dev@datadoghq.com" },
+]
+classifiers = [
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+[project.optional-dependencies]
+mypy = [
+    "mypy",
+]
+
+[project.urls]
+Homepage = "https://github.com/DataDog/envier"
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "envier/_version.py"
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "envier/",
+]
 
 [tool.mypy]
 files = "envier/*.py"
@@ -13,12 +49,7 @@ ignore_missing_imports = true
 
 [tool.black]
 exclude = '''
-  (
-    /(
-      \.venv.*
-      | \.riot
-    )/
-  )
+envier/_version.py
 '''
 
 [tool.isort]
@@ -30,3 +61,37 @@ default_section = "THIRDPARTY"
 skip = [".riot", ".eggs", "build"]
 skip_glob = [".venv*"]
 line_length = 120
+
+[tool.hatch.envs.tests]
+template = "tests"
+dependencies = [
+  "pytest",
+  "mypy==0.961",
+  "sphinx==5.1.1",
+  "alabaster==0.7.12",
+
+]
+[tool.hatch.envs.tests.scripts]
+tests = "pytest -vv {args}"
+
+[[tool.hatch.envs.tests.matrix]]
+python = ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12"]
+
+[tool.hatch.envs.checks]
+python = "3.10"
+dependencies = [
+  "black",
+  "mypy~=0.770",
+  "flake8~=5.0.4",
+  "flake8-annotations~=2.9.1",
+  "flake8-black",
+  "flake8-bugbear~=22.9.23",
+  "flake8-docstrings~=1.6.0",
+  "flake8-import-order~=0.18.1",
+  "flake8-isort~=5.0.0",
+]
+
+[tool.hatch.envs.checks.scripts]
+formatting = "black --check {args} ."
+typing = "mypy --show-error-codes --install-types --non-interactive {args}"
+linting = "flake8 {args} envier/"

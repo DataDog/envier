@@ -1,16 +1,5 @@
 import os
-from typing import Any
-from typing import Callable
-from typing import Dict
-from typing import Generic
-from typing import Iterator
-from typing import List
-from typing import Optional
-from typing import Tuple
-from typing import Type
-from typing import TypeVar
-from typing import Union
-from typing import cast
+import typing as t
 import warnings
 
 
@@ -20,46 +9,43 @@ class NoDefaultType(object):
 
 
 NoDefault = NoDefaultType()
-DeprecationInfo = Tuple[str, str, str]
+DeprecationInfo = t.Tuple[str, str, str]
 
 
-T = TypeVar("T")
-K = TypeVar("K")
-V = TypeVar("V")
+T = t.TypeVar("T")
+K = t.TypeVar("K")
+V = t.TypeVar("V")
 
-MapType = Union[Callable[[str], V], Callable[[str, str], Tuple[K, V]]]
-HelpInfo = Tuple[str, str, str, str]
+MapType = t.Union[t.Callable[[str], V], t.Callable[[str, str], t.Tuple[K, V]]]
+HelpInfo = t.Tuple[str, str, str, str]
 
 
-def _normalized(name):
-    # type: (str) -> str
+def _normalized(name: str) -> str:
     return name.upper().replace(".", "_").rstrip("_")
 
 
-def _check_type(value, _type):
-    # type: (Any, Union[object, Type[T]]) -> bool
+def _check_type(value: t.Any, _type: t.Union[object, t.Type[T]]) -> bool:
     if hasattr(_type, "__origin__"):
         return isinstance(value, _type.__args__)  # type: ignore[attr-defined,union-attr]
 
     return isinstance(value, _type)  # type: ignore[arg-type]
 
 
-class EnvVariable(Generic[T]):
+class EnvVariable(t.Generic[T]):
     def __init__(
         self,
-        type,  # type: Union[object, Type[T]]
-        name,  # type: str
-        parser=None,  # type: Optional[Callable[[str], T]]
-        validator=None,  # type: Optional[Callable[[T], None]]
-        map=None,  # type: Optional[MapType]
-        default=NoDefault,  # type: Union[T, NoDefaultType]
-        deprecations=None,  # type: Optional[List[DeprecationInfo]]
-        help=None,  # type: Optional[str]
-        help_type=None,  # type: Optional[str]
-        help_default=None,  # type: Optional[str]
-    ):
-        # type: (...) -> None
-        if hasattr(type, "__origin__") and type.__origin__ is Union:  # type: ignore[attr-defined,union-attr]
+        type: t.Union[object, t.Type[T]],
+        name: str,
+        parser: t.Optional[t.Callable[[str], T]] = None,
+        validator: t.Optional[t.Callable[[T], None]] = None,
+        map: t.Optional[MapType] = None,
+        default: t.Union[T, NoDefaultType] = NoDefault,
+        deprecations: t.Optional[t.List[DeprecationInfo]] = None,
+        help: t.Optional[str] = None,
+        help_type: t.Optional[str] = None,
+        help_default: t.Optional[str] = None,
+    ) -> None:
+        if hasattr(type, "__origin__") and type.__origin__ is t.Union:  # type: ignore[attr-defined,union-attr]
             if not isinstance(default, type.__args__):  # type: ignore[attr-defined,union-attr]
                 raise TypeError(
                     "default must be either of these types {}".format(type.__args__)  # type: ignore[attr-defined,union-attr]
@@ -79,8 +65,7 @@ class EnvVariable(Generic[T]):
         self.help_type = help_type
         self.help_default = help_default
 
-    def _retrieve(self, env, prefix):
-        # type: (Env, str) -> T
+    def _retrieve(self, env: "Env", prefix: str) -> T:
         source = env.source
 
         full_name = prefix + _normalized(self.name)
@@ -131,10 +116,15 @@ class EnvVariable(Generic[T]):
             return parsed
 
         if self.type is bool:
-            return cast(T, raw.lower() in env.__truthy__)
+            return t.cast(T, raw.lower() in env.__truthy__)
         elif self.type in (list, tuple, set):
             collection = raw.split(env.__item_separator__)
-            return cast(T, self.type(collection if self.map is None else map(self.map, collection)))  # type: ignore[call-arg,arg-type,operator]
+            return t.cast(
+                T,
+                self.type(  # type: ignore[operator]
+                    collection if self.map is None else map(self.map, collection)  # type: ignore[arg-type]
+                ),
+            )
         elif self.type is dict:
             d = dict(
                 _.split(env.__value_separator__, 1)
@@ -142,22 +132,21 @@ class EnvVariable(Generic[T]):
             )
             if self.map is not None:
                 d = dict(self.map(*_) for _ in d.items())
-            return cast(T, d)
+            return t.cast(T, d)
 
         if _check_type(raw, self.type):
-            return cast(T, raw)
+            return t.cast(T, raw)
 
-        if hasattr(self.type, "__origin__") and self.type.__origin__ is Union:  # type: ignore[attr-defined,union-attr]
-            for t in self.type.__args__:  # type: ignore[attr-defined,union-attr]
+        if hasattr(self.type, "__origin__") and self.type.__origin__ is t.Union:  # type: ignore[attr-defined,union-attr]
+            for ot in self.type.__args__:  # type: ignore[attr-defined,union-attr]
                 try:
-                    return cast(T, t(raw))
+                    return t.cast(T, ot(raw))
                 except TypeError:
                     pass
 
         return self.type(raw)  # type: ignore[call-arg,operator]
 
-    def __call__(self, env, prefix):
-        # type: (Env, str) -> T
+    def __call__(self, env: "Env", prefix: str) -> T:
         value = self._retrieve(env, prefix)
 
         if self.validator is not None:
@@ -172,14 +161,12 @@ class EnvVariable(Generic[T]):
         return value
 
 
-class DerivedVariable(Generic[T]):
-    def __init__(self, type, derivation):
-        # type: (Type[T], Callable[[Env], T]) -> None
+class DerivedVariable(t.Generic[T]):
+    def __init__(self, type: t.Type[T], derivation: t.Callable[["Env"], T]) -> None:
         self.type = type
         self.derivation = derivation
 
-    def __call__(self, env):
-        # type: (Env) -> T
+    def __call__(self, env: "Env") -> T:
         value = self.derivation(env)
         if not _check_type(value, self.type):
             raise TypeError(
@@ -200,7 +187,7 @@ class Env(object):
     a given derivation function.
 
     If variables share a common prefix, this can be specified with the
-    ``__prefix__`` class attribute. Any dots in the prefix or the variable names
+    ``__prefix__`` class attribute. t.Any dots in the prefix or the variable names
     will be replaced with underscores. The variable names will be uppercased
     before being looked up in the environment.
 
@@ -211,7 +198,7 @@ class Env(object):
     are considered to be a representation of ``True``.
 
     There is also basic support for collections. An item of type ``list``,
-    ``tuple`` or ``set`` will be parsed using ``,`` as item separator.
+    ``t.Tuple`` or ``set`` will be parsed using ``,`` as item separator.
     Similarly, an item of type ``dict`` will be parsed with ``,`` as item
     separator, and ``:`` as value separator. These can be changed by overriding
     the ``__item_separator__`` and ``__value_separator__`` class attributes
@@ -222,20 +209,21 @@ class Env(object):
 
     __truthy__ = frozenset({"1", "true", "yes", "on"})
     __prefix__ = ""
-    __item__ = None  # type: Optional[str]
+    __item__: t.Optional[str] = None
     __item_separator__ = ","
     __value_separator__ = ":"
 
-    def __init__(self, source=None, parent=None):
-        # type: (Optional[Dict[str, str]], Optional[Env]) -> None
+    def __init__(
+        self,
+        source: t.Optional[t.Dict[str, str]] = None,
+        parent: t.Optional["Env"] = None,
+    ) -> None:
         self.source = source or os.environ
         self.parent = parent
 
-        self._full_prefix = (
+        self._full_prefix: str = (
             parent._full_prefix if parent is not None else ""
-        ) + _normalized(
-            self.__prefix__
-        )  # type: str
+        ) + _normalized(self.__prefix__)
         if self._full_prefix and not self._full_prefix.endswith("_"):
             self._full_prefix += "_"
 
@@ -260,18 +248,17 @@ class Env(object):
     @classmethod
     def var(
         cls,
-        type,  # type: Type[T]
-        name,  # type: str
-        parser=None,  # type: Optional[Callable[[str], T]]
-        validator=None,  # type: Optional[Callable[[T], None]]
-        map=None,  # type: Optional[MapType]
-        default=NoDefault,  # type: Union[T, NoDefaultType]
-        deprecations=None,  # type: Optional[List[DeprecationInfo]]
-        help=None,  # type: Optional[str]
-        help_type=None,  # type: Optional[str]
-        help_default=None,  # type: Optional[str]
-    ):
-        # type: (...) -> EnvVariable[T]
+        type: t.Type[T],
+        name: str,
+        parser: t.Optional[t.Callable[[str], T]] = None,
+        validator: t.Optional[t.Callable[[T], None]] = None,
+        map: t.Optional[MapType] = None,
+        default: t.Union[T, NoDefaultType] = NoDefault,
+        deprecations: t.Optional[t.List[DeprecationInfo]] = None,
+        help: t.Optional[str] = None,
+        help_type: t.Optional[str] = None,
+        help_default: t.Optional[str] = None,
+    ) -> EnvVariable[T]:
         return EnvVariable(
             type,
             name,
@@ -288,18 +275,17 @@ class Env(object):
     @classmethod
     def v(
         cls,
-        type,  # type: Union[object, Type[T]]
-        name,  # type: str
-        parser=None,  # type: Optional[Callable[[str], T]]
-        validator=None,  # type: Optional[Callable[[T], None]]
-        map=None,  # type: Optional[MapType]
-        default=NoDefault,  # type: Union[T, NoDefaultType]
-        deprecations=None,  # type: Optional[List[DeprecationInfo]]
-        help=None,  # type: Optional[str]
-        help_type=None,  # type: Optional[str]
-        help_default=None,  # type: Optional[str]
-    ):
-        # type: (...) -> EnvVariable[T]
+        type: t.Union[object, t.Type[T]],
+        name: str,
+        parser: t.Optional[t.Callable[[str], T]] = None,
+        validator: t.Optional[t.Callable[[T], None]] = None,
+        map: t.Optional[MapType] = None,
+        default: t.Union[T, NoDefaultType] = NoDefault,
+        deprecations: t.Optional[t.List[DeprecationInfo]] = None,
+        help: t.Optional[str] = None,
+        help_type: t.Optional[str] = None,
+        help_default: t.Optional[str] = None,
+    ) -> EnvVariable[T]:
         return EnvVariable(
             type,
             name,
@@ -314,18 +300,19 @@ class Env(object):
         )
 
     @classmethod
-    def der(cls, type, derivation):
-        # type: (Type[T], Callable[[Env], T]) -> DerivedVariable[T]
+    def der(
+        cls, type: t.Type[T], derivation: t.Callable[["Env"], T]
+    ) -> DerivedVariable[T]:
         return DerivedVariable(type, derivation)
 
     @classmethod
-    def d(cls, type, derivation):
-        # type: (Type[T], Callable[[Env], T]) -> DerivedVariable[T]
+    def d(
+        cls, type: t.Type[T], derivation: t.Callable[["Env"], T]
+    ) -> DerivedVariable[T]:
         return DerivedVariable(type, derivation)
 
     @classmethod
-    def keys(cls):
-        # type: () -> Iterator[str]
+    def keys(cls) -> t.Iterator[str]:
         """Return the names of all the items."""
         return (
             k
@@ -336,8 +323,7 @@ class Env(object):
         )
 
     @classmethod
-    def values(cls):
-        # type: () -> Iterator[Union[EnvVariable, DerivedVariable, Type[Env]]]
+    def values(cls) -> t.Iterator[t.Union[EnvVariable, DerivedVariable, t.Type["Env"]]]:
         """Return the names of all the items."""
         return (
             v
@@ -348,8 +334,12 @@ class Env(object):
         )
 
     @classmethod
-    def include(cls, env_spec, namespace=None, overwrite=False):
-        # type: (Type[Env], Optional[str], bool) -> None
+    def include(
+        cls,
+        env_spec: t.Type["Env"],
+        namespace: t.Optional[str] = None,
+        overwrite: bool = False,
+    ) -> None:
         """Include variables from another Env subclass.
 
         The new items can be merged at the top level, or parented to a
@@ -383,12 +373,11 @@ class Env(object):
             setattr(cls, k, v)
 
     @classmethod
-    def help_info(cls, recursive=False):
-        # type: (bool) -> List[HelpInfo]
+    def help_info(cls, recursive: bool = False) -> t.List[HelpInfo]:
         """Extract the help information from the class.
 
         Returns a list of all the environment variables declared by the class.
-        The format of each entry is a tuple consisting of the variable name (in
+        The format of each entry is a t.Tuple consisting of the variable name (in
         double backtics quotes), the type, the default value, and the help text.
 
         Set ``recursive`` to ``True`` to include variables from nested Env
@@ -396,8 +385,7 @@ class Env(object):
         """
         entries = []
 
-        def add_entries(full_prefix, config):
-            # type: (str, Type[Env]) -> None
+        def add_entries(full_prefix: str, config: t.Type[Env]) -> None:
             vars = sorted(
                 (_ for _ in config.values() if isinstance(_, EnvVariable)),
                 key=lambda v: v.name,
@@ -415,7 +403,7 @@ class Env(object):
                     try:
                         help_type = "``%s``" % v.type.__name__  # type: ignore[attr-defined]
                     except AttributeError:
-                        # typing.Union[<type>, NoneType]
+                        # typing.t.Union[<type>, NoneType]
                         help_type = v.type.__args__[0].__name__  # type: ignore[attr-defined]
 
                 entries.append(

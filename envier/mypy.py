@@ -25,8 +25,7 @@ _envier_attr_makers = frozenset(
 _envier_base_classes = frozenset({"envier.En", "envier.Env"})
 
 
-def _envier_attr_callback(ctx):
-    # type: (MethodContext) -> ProperType
+def _envier_attr_callback(ctx: MethodContext) -> ProperType:
     arg_type = ctx.arg_types[0][0]
     if isinstance(arg_type, Instance):
         # WARNING: This returns an UnboundType which seems to match whatever!
@@ -36,8 +35,7 @@ def _envier_attr_callback(ctx):
     return make_simplified_union({_.ret_type for _ in arg_type.items})  # type: ignore[arg-type]
 
 
-def _envier_base_class_callback(ctx):
-    # type: (ClassDefContext) -> None
+def _envier_base_class_callback(ctx: ClassDefContext) -> None:
     for stmt in ctx.cls.defs.body:
         if isinstance(stmt, AssignmentStmt):
             decl = stmt.rvalue
@@ -81,8 +79,9 @@ def _envier_base_class_callback(ctx):
 
 
 class EnvierPlugin(Plugin):
-    def get_method_hook(self, fullname):
-        # type: (str) -> t.Optional[t.Callable[[MethodContext], Type]]
+    def get_method_hook(
+        self, fullname: str
+    ) -> t.Optional[t.Callable[[MethodContext], Type]]:
         if fullname in _envier_attr_makers:
             # We use this callback to override the the method return value to
             # match the attribute value, which is also inferred by the `type`
@@ -91,8 +90,9 @@ class EnvierPlugin(Plugin):
 
         return None
 
-    def get_base_class_hook(self, fullname):
-        # type: (str) -> t.Optional[t.Callable[[ClassDefContext], None]]
+    def get_base_class_hook(
+        self, fullname: str
+    ) -> t.Optional[t.Callable[[ClassDefContext], None]]:
         if fullname in _envier_base_classes:
             # We use this callback to override the class attribute types to
             # match the ones declared by the `type` argument of the Env methods.
@@ -101,6 +101,5 @@ class EnvierPlugin(Plugin):
         return None
 
 
-def plugin(version):
-    # type: (str) -> t.Type[EnvierPlugin]
+def plugin(version: str) -> t.Type[EnvierPlugin]:
     return EnvierPlugin
