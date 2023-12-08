@@ -1,7 +1,4 @@
 import subprocess
-from sys import version_info as PY
-
-import pytest
 
 
 def mypy(*args, **kwargs):
@@ -10,13 +7,12 @@ def mypy(*args, **kwargs):
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         close_fds=True,
-        **kwargs
+        **kwargs,
     )
     stdout, stderr = subp.communicate()
     return stdout, stderr, subp.wait()
 
 
-@pytest.mark.skipif(PY < (3, 6), reason="requires Python 3.6+")
 def test_types():
     out, _, code = mypy("tests/types_test.py")
     assert code != 0

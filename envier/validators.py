@@ -4,8 +4,7 @@ import typing as t
 T = t.TypeVar("T")
 
 
-def choice(choices):
-    # type: (t.Iterable) -> t.Callable[[T], None]
+def choice(choices: t.Iterable) -> t.Callable[[T], None]:
     """
     A validator that checks if the value is one of the choices.
     """
@@ -18,8 +17,7 @@ def choice(choices):
     return validate
 
 
-def range(min_value, max_value):
-    # type: (int, int) -> t.Callable[[T], None]
+def range(min_value: int, max_value: int) -> t.Callable[[T], None]:
     """
     A validator that checks if the value is in the range.
     """
