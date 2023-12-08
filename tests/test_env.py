@@ -344,3 +344,16 @@ def test_env_validator(monkeypatch, value, exc):
             Config()
     else:
         assert Config().foo == value
+
+
+def test_env_dynamic(monkeypatch):
+    monkeypatch.setenv("FOO_PFX_BAR_VAR", "24")
+
+    class Config(Env):
+        __prefix__ = "foo.{prefix}"
+
+        foobar = Env.var(int, "{dyn}.var", default=42)
+
+    config = Config(dynamic={"prefix": "pfx", "dyn": "bar"})
+
+    assert config.foobar == 24
