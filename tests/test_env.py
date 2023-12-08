@@ -357,3 +357,23 @@ def test_env_dynamic(monkeypatch):
     config = Config(dynamic={"prefix": "pfx", "dyn": "bar"})
 
     assert config.foobar == 24
+
+
+def test_env_private(monkeypatch):
+    monkeypatch.setenv("_PRIVATE_FOO", "24")
+    monkeypatch.setenv("PUBLIC_FOO", "25")
+
+    class Config(Env):
+        private = Env.var(int, "private.foo", default=42, private=True)
+        public = Env.var(int, "public.foo", default=42)
+
+    config = Config()
+
+    assert config.private == 24
+    assert config.public == 25
+
+    assert Config.help_info() == [("``PUBLIC_FOO``", "``int``", "42", "")]
+    assert set(Config.help_info(include_private=True)) == {
+        ("``_PRIVATE_FOO``", "``int``", "42", ""),
+        ("``PUBLIC_FOO``", "``int``", "42", ""),
+    }
