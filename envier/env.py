@@ -41,6 +41,7 @@ class EnvVariable(t.Generic[T]):
         map: t.Optional[MapType] = None,
         default: t.Union[T, NoDefaultType] = NoDefault,
         deprecations: t.Optional[t.List[DeprecationInfo]] = None,
+        private: bool = False,
         help: t.Optional[str] = None,
         help_type: t.Optional[str] = None,
         help_default: t.Optional[str] = None,
@@ -60,6 +61,7 @@ class EnvVariable(t.Generic[T]):
         self.map = map
         self.default = default
         self.deprecations = deprecations
+        self.private = private
 
         self.help = help
         self.help_type = help_type
@@ -69,10 +71,14 @@ class EnvVariable(t.Generic[T]):
         source = env.source
 
         full_name = prefix + _normalized(self.name)
+        if self.private:
+            full_name = f"_{full_name}"
         raw = source.get(full_name.format(**env.dynamic))
         if raw is None and self.deprecations:
             for name, deprecated_when, removed_when in self.deprecations:
                 full_deprecated_name = prefix + _normalized(name)
+                if self.private:
+                    full_deprecated_name = f"_{full_deprecated_name}"
                 raw = source.get(full_deprecated_name.format(**env.dynamic))
                 if raw is not None:
                     deprecated_when_message = (
@@ -261,6 +267,7 @@ class Env(object):
         map: t.Optional[MapType] = None,
         default: t.Union[T, NoDefaultType] = NoDefault,
         deprecations: t.Optional[t.List[DeprecationInfo]] = None,
+        private: bool = False,
         help: t.Optional[str] = None,
         help_type: t.Optional[str] = None,
         help_default: t.Optional[str] = None,
@@ -273,6 +280,7 @@ class Env(object):
             map,
             default,
             deprecations,
+            private,
             help,
             help_type,
             help_default,
@@ -288,6 +296,7 @@ class Env(object):
         map: t.Optional[MapType] = None,
         default: t.Union[T, NoDefaultType] = NoDefault,
         deprecations: t.Optional[t.List[DeprecationInfo]] = None,
+        private: bool = False,
         help: t.Optional[str] = None,
         help_type: t.Optional[str] = None,
         help_default: t.Optional[str] = None,
@@ -300,6 +309,7 @@ class Env(object):
             map,
             default,
             deprecations,
+            private,
             help,
             help_type,
             help_default,
@@ -379,7 +389,9 @@ class Env(object):
             setattr(cls, k, v)
 
     @classmethod
-    def help_info(cls, recursive: bool = False) -> t.List[HelpInfo]:
+    def help_info(
+        cls, recursive: bool = False, include_private: bool = False
+    ) -> t.List[HelpInfo]:
         """Extract the help information from the class.
 
         Returns a list of all the environment variables declared by the class.
@@ -388,6 +400,9 @@ class Env(object):
 
         Set ``recursive`` to ``True`` to include variables from nested Env
         classes.
+
+        Set ``include_private`` to ``True`` to include variables that are
+        marked as private (i.e. their name starts with an underscore).
         """
         entries = []
 
@@ -398,6 +413,9 @@ class Env(object):
             )
 
             for v in vars:
+                if not include_private and v.private:
+                    continue
+
                 # Add a period at the end if necessary.
                 help_message = v.help.strip() if v.help is not None else ""
                 if help_message and not help_message.endswith("."):
@@ -412,9 +430,11 @@ class Env(object):
                         # typing.t.Union[<type>, NoneType]
                         help_type = v.type.__args__[0].__name__  # type: ignore[attr-defined]
 
+                private_prefix = "_" if v.private else ""
+
                 entries.append(
                     (
-                        "``" + full_prefix + _normalized(v.name) + "``",
+                        f"``{private_prefix}{full_prefix}{_normalized(v.name)}``",
                         help_type,  # type: ignore[attr-defined]
                         v.help_default
                         if v.help_default is not None
@@ -428,7 +448,7 @@ class Env(object):
         while configs:
             full_prefix, config = configs.pop()
             new_prefix = full_prefix + _normalized(config.__prefix__)
-            if not new_prefix.endswith("_"):
+            if new_prefix and not new_prefix.endswith("_"):
                 new_prefix += "_"
             add_entries(new_prefix, config)
 
