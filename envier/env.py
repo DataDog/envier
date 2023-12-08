@@ -69,11 +69,11 @@ class EnvVariable(t.Generic[T]):
         source = env.source
 
         full_name = prefix + _normalized(self.name)
-        raw = source.get(full_name)
+        raw = source.get(full_name.format(**env.dynamic))
         if raw is None and self.deprecations:
             for name, deprecated_when, removed_when in self.deprecations:
                 full_deprecated_name = prefix + _normalized(name)
-                raw = source.get(full_deprecated_name)
+                raw = source.get(full_deprecated_name.format(**env.dynamic))
                 if raw is not None:
                     deprecated_when_message = (
                         " in version %s" % deprecated_when
@@ -217,9 +217,15 @@ class Env(object):
         self,
         source: t.Optional[t.Dict[str, str]] = None,
         parent: t.Optional["Env"] = None,
+        dynamic: t.Optional[t.Dict[str, str]] = None,
     ) -> None:
         self.source = source or os.environ
         self.parent = parent
+        self.dynamic = (
+            {k.upper(): v.upper() for k, v in dynamic.items()}
+            if dynamic is not None
+            else {}
+        )
 
         self._full_prefix: str = (
             parent._full_prefix if parent is not None else ""
