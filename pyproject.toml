@@ -7,7 +7,7 @@ name = "envier"
 dynamic = ["version"]
 description = "Python application configuration via the environment"
 readme = "README.md"
-license = "MIT"
+license = {file = "LICENSE"}
 requires-python = ">=3.7"
 authors = [
     { name = "Datadog", email = "dev@datadoghq.com" },
