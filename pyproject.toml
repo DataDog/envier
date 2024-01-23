@@ -7,7 +7,7 @@ name = "envier"
 dynamic = ["version"]
 description = "Python application configuration via the environment"
 readme = "README.md"
-license = "MIT"
+license = {file = "LICENSE"}
 requires-python = ">=3.7"
 authors = [
     { name = "Datadog", email = "dev@datadoghq.com" },
@@ -20,6 +20,7 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: MIT License",
 ]
 
 [project.optional-dependencies]
