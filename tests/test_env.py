@@ -284,11 +284,16 @@ def test_env_dicts(monkeypatch, map, expected):
     assert DictConfig().foo == expected
 
 
-def test_env_optional_default():
+def test_env_optional_default(monkeypatch):
     class DictConfig(Env):
         foo = Env.var(Optional[str], "foo", default=None)
+        bar = Env.var(Optional[bool], "bar", default=None)
 
     assert DictConfig().foo is None
+    assert DictConfig().bar is None
+
+    monkeypatch.setenv("BAR", "0")
+    assert not DictConfig().bar
 
 
 @pytest.mark.parametrize("value,_type", [(1, int), ("1", str)])
