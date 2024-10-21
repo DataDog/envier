@@ -1,3 +1,4 @@
+from collections import namedtuple
 import os
 import typing as t
 import warnings
@@ -17,7 +18,7 @@ K = t.TypeVar("K")
 V = t.TypeVar("V")
 
 MapType = t.Union[t.Callable[[str], V], t.Callable[[str, str], t.Tuple[K, V]]]
-HelpInfo = t.Tuple[str, str, str, str]
+HelpInfo = namedtuple("HelpInfo", ("name", "type", "default", "help"))
 
 
 def _normalized(name: str) -> str:
@@ -432,7 +433,7 @@ class Env(object):
                     help_type = v.help_type
                 else:
                     try:
-                        help_type = "``%s``" % v.type.__name__  # type: ignore[attr-defined]
+                        help_type = v.type.__name__  # type: ignore[attr-defined]
                     except AttributeError:
                         # typing.t.Union[<type>, NoneType]
                         help_type = v.type.__args__[0].__name__  # type: ignore[attr-defined]
@@ -440,8 +441,8 @@ class Env(object):
                 private_prefix = "_" if v.private else ""
 
                 entries.append(
-                    (
-                        f"``{private_prefix}{full_prefix}{_normalized(v.name)}``",
+                    HelpInfo(
+                        f"{private_prefix}{full_prefix}{_normalized(v.name)}",
                         help_type,  # type: ignore[attr-defined]
                         (
                             v.help_default
