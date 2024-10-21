@@ -161,7 +161,12 @@ def test_env_nested_config(monkeypatch, prefix, var):
         service = ServiceConfig
 
     config = GlobalConfig()
-    assert set(config.keys()) == {"debug_mode", "service"}
+    assert set(config.keys()) == {"debug_mode"}
+    assert set(config.keys(recursive=True)) == {
+        "debug_mode",
+        "service.host",
+        "service.port",
+    }
     assert config.service.port == 8080
 
 
@@ -178,10 +183,22 @@ def test_env_implicit_nested_config(monkeypatch):
 
             host = Env.var(str, "host", default="localhost")
             port = Env.var(int, "port", default=3000)
+            _private = Env.var(int, "private", default=42, private=True)
 
     config = GlobalConfig()
-    assert set(config.keys()) == {"debug_mode", "service"}
+    assert set(config.keys()) == {"debug_mode"}
+    assert set(config.keys(recursive=True)) == {
+        "debug_mode",
+        "service.host",
+        "service.port",
+        "service._private",
+    }
     assert config.service.port == 8080
+
+    assert GlobalConfig.debug_mode.full_name == "MYAPP_DEBUG"
+    assert GlobalConfig.service.host.full_name == "MYAPP_SERVICE_HOST"
+    assert GlobalConfig.service.port.full_name == "MYAPP_SERVICE_PORT"
+    assert GlobalConfig.service._private.full_name == "_MYAPP_SERVICE_PRIVATE"
 
 
 def test_env_include():
@@ -383,3 +400,32 @@ def test_env_private(monkeypatch):
         ("_PRIVATE_FOO", "int", "42", ""),
         ("PUBLIC_FOO", "int", "42", ""),
     }
+
+    assert Config.private.full_name == "_PRIVATE_FOO"
+
+
+def test_env_items(monkeypatch):
+    monkeypatch.setenv("MYAPP_SERVICE_PORT", "8080")
+
+    class GlobalConfig(Env):
+        __prefix__ = "myapp"
+
+        debug_mode = Env.var(bool, "debug", default=False)
+
+        class ServiceConfig(Env):
+            __item__ = __prefix__ = "service"
+
+            host = Env.var(str, "host", default="localhost")
+            port = Env.var(int, "port", default=3000)
+            _private = Env.var(int, "private", default=42, private=True)
+
+    items = list(GlobalConfig.items())
+    assert items == [("debug_mode", GlobalConfig.debug_mode)]
+
+    items = list(GlobalConfig.items(recursive=True))
+    assert items == [
+        ("debug_mode", GlobalConfig.debug_mode),
+        ("service.host", GlobalConfig.ServiceConfig.host),
+        ("service.port", GlobalConfig.ServiceConfig.port),
+        ("service._private", GlobalConfig.ServiceConfig._private),
+    ]
