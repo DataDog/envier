@@ -4,6 +4,7 @@ import pytest
 
 from envier import En
 from envier import Env
+from envier import HelpInfo
 
 
 def test_env_default():
@@ -377,8 +378,8 @@ def test_env_private(monkeypatch):
     assert config.private == 24
     assert config.public == 25
 
-    assert Config.help_info() == [("``PUBLIC_FOO``", "``int``", "42", "")]
+    assert Config.help_info() == [HelpInfo("PUBLIC_FOO", "int", "42", "")]
     assert set(Config.help_info(include_private=True)) == {
-        ("``_PRIVATE_FOO``", "``int``", "42", ""),
-        ("``PUBLIC_FOO``", "``int``", "42", ""),
+        ("_PRIVATE_FOO", "int", "42", ""),
+        ("PUBLIC_FOO", "int", "42", ""),
     }

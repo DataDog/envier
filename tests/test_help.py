@@ -1,4 +1,5 @@
 from envier import Env
+from envier import HelpInfo
 
 
 class GlobalConfig(Env):
@@ -46,15 +47,15 @@ def test_help_info(monkeypatch):
     monkeypatch.setenv("MYAPP_NO_DEFAULT", "1")
 
     assert GlobalConfig.help_info() == [
-        ("``MYAPP_DEBUG``", "Boolean", "False", "Whether to enable debug logging."),
-        (
-            "``MYAPP_NO_DEFAULT``",
+        HelpInfo("MYAPP_DEBUG", "Boolean", "False", "Whether to enable debug logging."),
+        HelpInfo(
+            "MYAPP_NO_DEFAULT",
             "Boolean",
             "",
             "A variable with no default value, which makes it mandatory.",
         ),
-        (
-            "``MYAPP_URL``",
+        HelpInfo(
+            "MYAPP_URL",
             "String",
             "http://localhost:5000",
             "The URL of the application.",
@@ -66,19 +67,19 @@ def test_help_info_recursive(monkeypatch):
     monkeypatch.setenv("MYAPP_NO_DEFAULT", "1")
 
     assert GlobalConfig.help_info(recursive=True) == [
-        ("``MYAPP_DEBUG``", "Boolean", "False", "Whether to enable debug logging."),
-        (
-            "``MYAPP_NO_DEFAULT``",
+        HelpInfo("MYAPP_DEBUG", "Boolean", "False", "Whether to enable debug logging."),
+        HelpInfo(
+            "MYAPP_NO_DEFAULT",
             "Boolean",
             "",
             "A variable with no default value, which makes it mandatory.",
         ),
-        (
-            "``MYAPP_URL``",
+        HelpInfo(
+            "MYAPP_URL",
             "String",
             "http://localhost:5000",
             "The URL of the application.",
         ),
-        ("``MYAPP_SERVICE_HOST``", "``str``", "localhost", "The host of the service."),
-        ("``MYAPP_SERVICE_PORT``", "``int``", "3000", "The port of the service."),
+        HelpInfo("MYAPP_SERVICE_HOST", "str", "localhost", "The host of the service."),
+        HelpInfo("MYAPP_SERVICE_PORT", "int", "3000", "The port of the service."),
     ]
