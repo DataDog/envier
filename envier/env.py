@@ -413,10 +413,6 @@ class Env(metaclass=EnvMeta):
             or isinstance(v, type)
             and issubclass(v, Env)
         }
-        if not overwrite:
-            overlap = set(cls.__dict__.keys()) & set(to_include.keys())
-            if overlap:
-                raise ValueError("Configuration clashes detected: {}".format(overlap))
 
         own_prefix = _normalized(getattr(cls, "__prefix__", ""))
 
@@ -433,6 +429,11 @@ class Env(metaclass=EnvMeta):
                             v._full_name = f"{own_prefix}_{v._full_name}"
 
             return None
+
+        if not overwrite:
+            overlap = set(cls.__dict__.keys()) & set(to_include.keys())
+            if overlap:
+                raise ValueError("Configuration clashes detected: {}".format(overlap))
 
         other_prefix = getattr(env_spec, "__prefix__", "")
         for k, v in to_include.items():

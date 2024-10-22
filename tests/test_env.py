@@ -250,12 +250,14 @@ def test_env_include_namespace(monkeypatch):
         __prefix__ = "myapp"
 
         debug_mode = Env.var(bool, "debug", default=False)
+        enable = Env.var(bool, "enable", default=True)
 
     class ServiceConfig(Env):
         __prefix__ = "service"
 
         host = Env.var(str, "host", default="localhost")
         port = Env.var(int, "port", default=3000)
+        enable = Env.var(bool, "enable", default=False)
 
     GlobalConfig.include(ServiceConfig, namespace="service")
     with pytest.raises(ValueError):
