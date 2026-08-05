@@ -15,7 +15,7 @@ Found 8 errors in 1 file (checked 1 source file)
 
 def mypy(*args, **kwargs):
     subp = subprocess.Popen(
-        ["mypy"] + list(args),
+        ["mypy", "--python-version", "3.9"] + list(args),
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         close_fds=True,
