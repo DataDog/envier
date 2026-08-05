@@ -17,6 +17,7 @@ DeprecationInfo = t.Tuple[str, str, str]
 T = t.TypeVar("T")
 K = t.TypeVar("K")
 V = t.TypeVar("V")
+C = t.TypeVar("C", bound="Env")
 
 MapType = t.Union[t.Callable[[str], V], t.Callable[[str, str], t.Tuple[K, V]]]
 HelpInfo = namedtuple("HelpInfo", ("name", "type", "default", "help"))
@@ -178,12 +179,16 @@ class EnvVariable(t.Generic[T]):
         return value
 
 
-class DerivedVariable(t.Generic[T]):
-    def __init__(self, type: t.Type[T], derivation: t.Callable[["Env"], T]) -> None:
+class DerivedVariable(t.Generic[C, T]):
+    def __init__(
+        self,
+        type: object,
+        derivation: t.Callable[[C], T],
+    ) -> None:
         self.type = type
         self.derivation = derivation
 
-    def __call__(self, env: "Env") -> T:
+    def __call__(self, env: C) -> T:
         value = self.derivation(env)
         if not _check_type(value, self.type):
             raise TypeError(
@@ -297,19 +302,22 @@ class Env(metaclass=EnvMeta):
         help: t.Optional[str] = None,
         help_type: t.Optional[str] = None,
         help_default: t.Optional[str] = None,
-    ) -> EnvVariable[T]:
-        return EnvVariable(
-            type,
-            name,
-            parser,
-            validator,
-            map,
-            default,
-            deprecations,
-            private,
-            help,
-            help_type,
-            help_default,
+    ) -> T:
+        return t.cast(
+            T,
+            EnvVariable(
+                type,
+                name,
+                parser,
+                validator,
+                map,
+                default,
+                deprecations,
+                private,
+                help,
+                help_type,
+                help_default,
+            ),
         )
 
     @classmethod
@@ -326,32 +334,33 @@ class Env(metaclass=EnvMeta):
         help: t.Optional[str] = None,
         help_type: t.Optional[str] = None,
         help_default: t.Optional[str] = None,
-    ) -> EnvVariable[T]:
-        return EnvVariable(
-            type,
-            name,
-            parser,
-            validator,
-            map,
-            default,
-            deprecations,
-            private,
-            help,
-            help_type,
-            help_default,
+    ) -> T:
+        return t.cast(
+            T,
+            EnvVariable(
+                type,
+                name,
+                parser,
+                validator,
+                map,
+                default,
+                deprecations,
+                private,
+                help,
+                help_type,
+                help_default,
+            ),
         )
 
+    # Union type forms such as Optional[T] are not type objects. TypeForm is
+    # only available in the standard library on Python 3.15 and newer.
     @classmethod
-    def der(
-        cls, type: t.Type[T], derivation: t.Callable[["Env"], T]
-    ) -> DerivedVariable[T]:
-        return DerivedVariable(type, derivation)
+    def der(cls, type: object, derivation: t.Callable[[C], T]) -> T:
+        return t.cast(T, DerivedVariable(type, derivation))
 
     @classmethod
-    def d(
-        cls, type: t.Type[T], derivation: t.Callable[["Env"], T]
-    ) -> DerivedVariable[T]:
-        return DerivedVariable(type, derivation)
+    def d(cls, type: object, derivation: t.Callable[[C], T]) -> T:
+        return t.cast(T, DerivedVariable(type, derivation))
 
     @classmethod
     def items(

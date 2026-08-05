@@ -7,19 +7,27 @@ class CustomObject(object):
     pass
 
 
+def derive_custom_object(_: En) -> CustomObject:
+    return CustomObject()
+
+
 class Config(En):
     foo = En.v(str, "foo", default="hello")
-    co = En.d(CustomObject, lambda _: CustomObject())
-    opt = En.v(Optional[str], "opt", default=None)
-    opt_co = En.v(Optional[CustomObject], "opt2", default=None)
+    co = En.d(CustomObject, derive_custom_object)
+    opt: Optional[str] = En.v(Optional[str], "opt", default=None)
+    opt_co: Optional[CustomObject] = En.v(Optional[CustomObject], "opt2", default=None)
 
     class SubConfig(En):
         __item__ = "subconfig"
 
         foo = En.v(str, "foo", default="hello")
-        co = En.d(CustomObject, lambda _: CustomObject())
-        opt = En.v(Optional[str], "opt", default=None)
-        opt_co = En.v(Optional[CustomObject], "opt2", default=None)
+        co = En.d(CustomObject, derive_custom_object)
+        opt: Optional[str] = En.v(Optional[str], "opt", default=None)
+        opt_co: Optional[CustomObject] = En.v(
+            Optional[CustomObject], "opt2", default=None
+        )
+
+    subconfig: SubConfig
 
 
 config = Config()

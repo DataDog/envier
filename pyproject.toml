@@ -68,6 +68,7 @@ template = "tests"
 dependencies = [
   "pytest",
   "mypy==0.961",
+  "pyright==1.1.411",
   "sphinx==5.1.1",
   "alabaster==0.7.12",
 

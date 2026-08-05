@@ -83,10 +83,32 @@ viz.
 
 ## Type Checking
 
-The library ships with a `mypy` plugin to allow for type checking. If you want
-to use it, either install the library with the `mypy` extra or ensure that
-`mypy` is installed, and then add `envier.mypy` to the list of extra plugins in
-the `mypy` configuration.
+Variable and derived-value types are understood by both `mypy` and `pyright`.
+Typing expressions such as `Optional[str]` should also have an explicit
+attribute annotation so type checkers do not infer the type only from a
+`None` default:
+
+~~~python
+from typing import Optional
+
+
+class Config(Env):
+    token: Optional[str] = Env.v(Optional[str], "token", default=None)
+~~~
+
+The library also ships with a `mypy` plugin for dynamically named nested
+configurations. To use it, either install the library with the `mypy` extra or
+ensure that `mypy` is installed, and then add `envier.mypy` to the list of extra
+plugins in the `mypy` configuration. For portability to other type checkers,
+nested configurations can instead be declared explicitly:
+
+~~~python
+class Config(Env):
+    class Service(Env):
+        __item__ = "service"
+
+    service: Service
+~~~
 
 
 ## Roadmap
