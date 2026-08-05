@@ -19,5 +19,5 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - run: |
-          pip install hatch
+          pip install hatch "virtualenv<21"
           hatch run tests.py${{ matrix.python-version }}:tests

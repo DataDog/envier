@@ -82,7 +82,7 @@ python = ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
 [tool.hatch.envs.checks]
 python = "3.10"
 dependencies = [
-  "black",
+  "black==22.10.0",
   "mypy~=0.770",
   "flake8~=5.0.4",
   "flake8-annotations~=2.9.1",
@@ -91,6 +91,7 @@ dependencies = [
   "flake8-docstrings~=1.6.0",
   "flake8-import-order~=0.18.1",
   "flake8-isort~=5.0.0",
+  "setuptools<81",
 ]
 
 [tool.hatch.envs.checks.scripts]
