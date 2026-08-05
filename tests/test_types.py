@@ -1,14 +1,14 @@
 import subprocess
 
 
-EXPECTED_MYPY_OUTPUT = """tests/types_test.py:59: error: Incompatible types in assignment (expression has type "int", variable has type "str")  [assignment]
-tests/types_test.py:60: error: Incompatible types in assignment (expression has type "str", variable has type "CustomObject")  [assignment]
-tests/types_test.py:61: error: Incompatible types in assignment (expression has type "bool", variable has type "Optional[str]")  [assignment]
-tests/types_test.py:62: error: Incompatible types in assignment (expression has type "bytes", variable has type "Optional[CustomObject]")  [assignment]
-tests/types_test.py:64: error: Incompatible types in assignment (expression has type "int", variable has type "str")  [assignment]
-tests/types_test.py:65: error: Incompatible types in assignment (expression has type "str", variable has type "CustomObject")  [assignment]
-tests/types_test.py:66: error: Incompatible types in assignment (expression has type "bool", variable has type "Optional[str]")  [assignment]
-tests/types_test.py:67: error: Incompatible types in assignment (expression has type "bytes", variable has type "Optional[CustomObject]")  [assignment]
+EXPECTED_MYPY_OUTPUT = """tests/types_test.py:72: error: Incompatible types in assignment (expression has type "int", variable has type "str")  [assignment]
+tests/types_test.py:73: error: Incompatible types in assignment (expression has type "str", variable has type "CustomObject")  [assignment]
+tests/types_test.py:74: error: Incompatible types in assignment (expression has type "bool", variable has type "Optional[str]")  [assignment]
+tests/types_test.py:75: error: Incompatible types in assignment (expression has type "bytes", variable has type "Optional[CustomObject]")  [assignment]
+tests/types_test.py:77: error: Incompatible types in assignment (expression has type "int", variable has type "str")  [assignment]
+tests/types_test.py:78: error: Incompatible types in assignment (expression has type "str", variable has type "CustomObject")  [assignment]
+tests/types_test.py:79: error: Incompatible types in assignment (expression has type "bool", variable has type "Optional[str]")  [assignment]
+tests/types_test.py:80: error: Incompatible types in assignment (expression has type "bytes", variable has type "Optional[CustomObject]")  [assignment]
 Found 8 errors in 1 file (checked 1 source file)
 """
 

@@ -1,5 +1,6 @@
 from typing import Optional
 
+from envier import DerivedVariable
 from envier import En
 from envier import EnvVariable
 
@@ -14,9 +15,18 @@ def derive_custom_object(_: En) -> CustomObject:
 
 class Config(En):
     foo = En.v(str, "foo", default="hello")
-    co = En.d(CustomObject, derive_custom_object)
+
+    def derive_co(self: "Config") -> CustomObject:
+        return CustomObject()
+
+    def derive_foo(self: "Config") -> str:
+        return self.foo
+
+    co = En.d(CustomObject, derive_co)
+    derived_foo = En.d(str, derive_foo)
+    ignored_argument = En.d(bool, lambda _: True)
     opt: EnvVariable[Optional[str]] = En.v(Optional[str], "opt", default=None)
-    opt_co: EnvVariable[Optional[CustomObject]] = En.v(
+    opt_co: EnvVariable[Optional[CustomObject]] = En.var(
         Optional[CustomObject], "opt2", default=None
     )
 
@@ -26,7 +36,7 @@ class Config(En):
         foo = En.v(str, "foo", default="hello")
         co = En.d(CustomObject, derive_custom_object)
         opt: EnvVariable[Optional[str]] = En.v(Optional[str], "opt", default=None)
-        opt_co: EnvVariable[Optional[CustomObject]] = En.v(
+        opt_co: EnvVariable[Optional[CustomObject]] = En.var(
             Optional[CustomObject], "opt2", default=None
         )
 
@@ -39,6 +49,9 @@ config = Config()
 foo_var: EnvVariable[str] = Config.foo
 foo_spec_var: EnvVariable[str] = config.spec.foo
 opt_var: EnvVariable[Optional[str]] = Config.opt
+co_var: DerivedVariable[CustomObject] = Config.co
+derived_foo: str = config.derived_foo
+ignored_argument: bool = config.ignored_argument
 
 # OK
 config.foo = "world"

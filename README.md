@@ -24,7 +24,10 @@ variables from the environment.
 >>>     service_host = Env.var(str, "service.host", default="localhost")
 >>>     service_port = Env.var(int, "service.port", default=3000)
 >>> 
->>>     _is_default_port = Env.der(bool, lambda c: c.service_port == c.spec.service_port.default)
+>>>     def derive_is_default_port(config: "GlobalConfig") -> bool:
+>>>         return config.service_port == config.spec.service_port.default
+>>>
+>>>     _is_default_port = Env.der(bool, derive_is_default_port)
 >>> 
 >>> config = GlobalConfig()
 >>> config.service_port
@@ -91,10 +94,18 @@ attribute annotation so type checkers do not infer the type only from a
 ~~~python
 from typing import Optional
 
+from envier import Env
+from envier import EnvVariable
+
 
 class Config(Env):
-    token: Optional[str] = Env.v(Optional[str], "token", default=None)
+    token: EnvVariable[Optional[str]] = Env.v(Optional[str], "token", default=None)
 ~~~
+
+Derivation callbacks that access configuration fields should use a named
+callback with an explicit parameter annotation, as in the synopsis above.
+The enclosing class cannot be inferred from a lambda while its class body is
+still being evaluated.
 
 The library also ships with a `mypy` plugin for dynamically named nested
 configurations. To use it, either install the library with the `mypy` extra or

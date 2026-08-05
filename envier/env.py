@@ -197,16 +197,16 @@ class EnvVariable(t.Generic[T]):
         return value
 
 
-class DerivedVariable(t.Generic[C, T]):
+class DerivedVariable(t.Generic[T]):
     def __init__(
         self,
         type: object,
-        derivation: t.Callable[[C], T],
+        derivation: t.Callable[..., T],
     ) -> None:
         self.type = type
         self.derivation = derivation
 
-    def __call__(self, env: C) -> T:
+    def __call__(self, env: "Env") -> T:
         value = self.derivation(env)
         if not _check_type(value, self.type):
             raise TypeError(
@@ -216,10 +216,12 @@ class DerivedVariable(t.Generic[C, T]):
             )
         return value
 
+
+class _OwnedDerivedVariable(DerivedVariable[T], t.Generic[C, T]):
     if t.TYPE_CHECKING:
 
         @t.overload
-        def __get__(self, instance: None, owner: t.Type[C]) -> "DerivedVariable[C, T]":
+        def __get__(self, instance: None, owner: t.Type[C]) -> "DerivedVariable[T]":
             ...
 
         @t.overload
@@ -228,7 +230,7 @@ class DerivedVariable(t.Generic[C, T]):
 
         def __get__(
             self, instance: t.Optional[C], owner: t.Type[C]
-        ) -> t.Union["DerivedVariable[C, T]", T]:
+        ) -> t.Union["DerivedVariable[T]", T]:
             ...
 
         def __set__(self, instance: C, value: T) -> None:
@@ -337,7 +339,7 @@ class Env(metaclass=EnvMeta):
     @classmethod
     def var(
         cls,
-        type: t.Type[T],
+        type: t.Union[object, t.Type[T]],
         name: str,
         parser: t.Optional[t.Callable[[str], T]] = None,
         validator: t.Optional[t.Callable[[T], None]] = None,
@@ -395,12 +397,67 @@ class Env(metaclass=EnvMeta):
     # Union type forms such as Optional[T] are not type objects. TypeForm is
     # only available in the standard library on Python 3.15 and newer.
     @classmethod
-    def der(cls, type: object, derivation: t.Callable[[C], T]) -> DerivedVariable[C, T]:
-        return DerivedVariable(type, derivation)
+    @t.overload
+    def der(
+        cls, type: object, derivation: t.Callable[["Env"], T]
+    ) -> _OwnedDerivedVariable["Env", T]:
+        ...
 
     @classmethod
-    def d(cls, type: object, derivation: t.Callable[[C], T]) -> DerivedVariable[C, T]:
-        return DerivedVariable(type, derivation)
+    @t.overload
+    def der(
+        cls, type: object, derivation: t.Callable[[C], T]
+    ) -> _OwnedDerivedVariable[C, T]:
+        ...
+
+    @classmethod
+    def der(
+        cls, type: object, derivation: t.Callable[..., T]
+    ) -> _OwnedDerivedVariable[t.Any, T]:
+        return t.cast(
+            _OwnedDerivedVariable[t.Any, T], DerivedVariable(type, derivation)
+        )
+
+    @classmethod
+    @t.overload
+    def d(
+        cls, type: object, derivation: t.Callable[["Env"], T]
+    ) -> _OwnedDerivedVariable["Env", T]:
+        ...
+
+    @classmethod
+    @t.overload
+    def d(
+        cls, type: object, derivation: t.Callable[[C], T]
+    ) -> _OwnedDerivedVariable[C, T]:
+        ...
+
+    @classmethod
+    def d(
+        cls, type: object, derivation: t.Callable[..., T]
+    ) -> _OwnedDerivedVariable[t.Any, T]:
+        return cls.der(type, derivation)
+
+    @classmethod
+    @t.overload
+    def items(
+        cls, recursive: bool = False, include_derived: t.Literal[False] = False
+    ) -> t.Iterator[t.Tuple[str, EnvVariable[t.Any]]]:
+        ...
+
+    @classmethod
+    @t.overload
+    def items(
+        cls, recursive: bool, include_derived: t.Literal[True]
+    ) -> t.Iterator[t.Tuple[str, t.Union[EnvVariable[t.Any], DerivedVariable[t.Any]]]]:
+        ...
+
+    @classmethod
+    @t.overload
+    def items(
+        cls, recursive: bool, include_derived: bool
+    ) -> t.Iterator[t.Tuple[str, t.Union[EnvVariable[t.Any], DerivedVariable[t.Any]]]]:
+        ...
 
     @classmethod
     def items(
