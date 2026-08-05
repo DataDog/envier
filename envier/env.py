@@ -76,6 +76,24 @@ class EnvVariable(t.Generic[T]):
     def full_name(self) -> str:
         return f"_{self._full_name}" if self.private else self._full_name
 
+    if t.TYPE_CHECKING:
+
+        @t.overload
+        def __get__(self, instance: None, owner: t.Type["Env"]) -> "EnvVariable[T]":
+            ...
+
+        @t.overload
+        def __get__(self, instance: "Env", owner: t.Type["Env"]) -> T:
+            ...
+
+        def __get__(
+            self, instance: t.Optional["Env"], owner: t.Type["Env"]
+        ) -> t.Union["EnvVariable[T]", T]:
+            ...
+
+        def __set__(self, instance: "Env", value: T) -> None:
+            ...
+
     def _cast(self, _type: t.Any, raw: str, env: "Env") -> t.Any:
         if _type is bool:
             return t.cast(T, raw.lower() in env.__truthy__)
@@ -198,6 +216,24 @@ class DerivedVariable(t.Generic[C, T]):
             )
         return value
 
+    if t.TYPE_CHECKING:
+
+        @t.overload
+        def __get__(self, instance: None, owner: t.Type[C]) -> "DerivedVariable[C, T]":
+            ...
+
+        @t.overload
+        def __get__(self, instance: C, owner: t.Type[C]) -> T:
+            ...
+
+        def __get__(
+            self, instance: t.Optional[C], owner: t.Type[C]
+        ) -> t.Union["DerivedVariable[C, T]", T]:
+            ...
+
+        def __set__(self, instance: C, value: T) -> None:
+            ...
+
 
 class EnvMeta(type):
     def __new__(
@@ -249,6 +285,16 @@ class Env(metaclass=EnvMeta):
     __item__: t.Optional[str] = None
     __item_separator__ = ","
     __value_separator__ = ":"
+
+    if t.TYPE_CHECKING:
+
+        @property
+        def spec(self: C) -> t.Type[C]:
+            ...
+
+        @spec.setter
+        def spec(self: C, value: t.Type[C]) -> None:
+            ...
 
     def __init__(
         self,
@@ -302,22 +348,19 @@ class Env(metaclass=EnvMeta):
         help: t.Optional[str] = None,
         help_type: t.Optional[str] = None,
         help_default: t.Optional[str] = None,
-    ) -> T:
-        return t.cast(
-            T,
-            EnvVariable(
-                type,
-                name,
-                parser,
-                validator,
-                map,
-                default,
-                deprecations,
-                private,
-                help,
-                help_type,
-                help_default,
-            ),
+    ) -> EnvVariable[T]:
+        return EnvVariable(
+            type,
+            name,
+            parser,
+            validator,
+            map,
+            default,
+            deprecations,
+            private,
+            help,
+            help_type,
+            help_default,
         )
 
     @classmethod
@@ -334,33 +377,30 @@ class Env(metaclass=EnvMeta):
         help: t.Optional[str] = None,
         help_type: t.Optional[str] = None,
         help_default: t.Optional[str] = None,
-    ) -> T:
-        return t.cast(
-            T,
-            EnvVariable(
-                type,
-                name,
-                parser,
-                validator,
-                map,
-                default,
-                deprecations,
-                private,
-                help,
-                help_type,
-                help_default,
-            ),
+    ) -> EnvVariable[T]:
+        return EnvVariable(
+            type,
+            name,
+            parser,
+            validator,
+            map,
+            default,
+            deprecations,
+            private,
+            help,
+            help_type,
+            help_default,
         )
 
     # Union type forms such as Optional[T] are not type objects. TypeForm is
     # only available in the standard library on Python 3.15 and newer.
     @classmethod
-    def der(cls, type: object, derivation: t.Callable[[C], T]) -> T:
-        return t.cast(T, DerivedVariable(type, derivation))
+    def der(cls, type: object, derivation: t.Callable[[C], T]) -> DerivedVariable[C, T]:
+        return DerivedVariable(type, derivation)
 
     @classmethod
-    def d(cls, type: object, derivation: t.Callable[[C], T]) -> T:
-        return t.cast(T, DerivedVariable(type, derivation))
+    def d(cls, type: object, derivation: t.Callable[[C], T]) -> DerivedVariable[C, T]:
+        return DerivedVariable(type, derivation)
 
     @classmethod
     def items(
