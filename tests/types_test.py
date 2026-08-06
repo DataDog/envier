@@ -1,8 +1,8 @@
 from typing import Optional
 
-from envier import DerivedVariable
 from envier import En
-from envier import EnvVariable
+from envier import v
+from envier.env import DerivedVariable
 
 
 class CustomObject(object):
@@ -20,8 +20,8 @@ class Config(En):
 
     co = En.der(CustomObject, derive_co)
     derived_foo = En.d(str, derive_foo)
-    opt: EnvVariable[Optional[str]] = En.v(Optional[str], "opt", default=None)
-    opt_co: EnvVariable[Optional[CustomObject]] = En.var(
+    opt: v[Optional[str]] = En.v(Optional[str], "opt", default=None)
+    opt_co: v[Optional[CustomObject]] = En.var(
         Optional[CustomObject], "opt2", default=None
     )
 
@@ -36,8 +36,8 @@ class Config(En):
 config = Config()
 
 # Class and spec access expose the declarations.
-foo_var: EnvVariable[str] = Config.foo
-foo_spec_var: EnvVariable[str] = config.spec.foo
+foo_var: v[str] = Config.foo
+foo_spec_var: v[str] = config.spec.foo
 co_var: DerivedVariable[CustomObject] = Config.co
 derived_foo: str = config.derived_foo
 

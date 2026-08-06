@@ -1,12 +1,12 @@
 import typing as t
 
-from envier import DerivedVariable
 from envier import En
-from envier import EnvVariable
+from envier import v
+from envier.env import DerivedVariable
 
 
-VariableItem = t.Tuple[str, EnvVariable[t.Any]]
-DeclarationItem = t.Tuple[str, t.Union[EnvVariable[t.Any], DerivedVariable[t.Any]]]
+VariableItem = t.Tuple[str, v[t.Any]]
+DeclarationItem = t.Tuple[str, t.Union[v[t.Any], DerivedVariable[t.Any]]]
 
 
 class Config(En):

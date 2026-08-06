@@ -95,11 +95,11 @@ attribute annotation so type checkers do not infer the type only from a
 from typing import Optional
 
 from envier import Env
-from envier import EnvVariable
+from envier import v
 
 
 class Config(Env):
-    token: EnvVariable[Optional[str]] = Env.v(Optional[str], "token", default=None)
+    token: v[Optional[str]] = Env.v(Optional[str], "token", default=None)
 ~~~
 
 Derivation callbacks that access configuration fields should use a named
