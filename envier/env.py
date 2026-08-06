@@ -334,10 +334,48 @@ class Env(metaclass=EnvMeta):
         for n, d in derived:
             setattr(self, n, d(self))
 
+    # TypeForm would express the second overload more directly, but it is only
+    # available in the standard library on Python 3.15 and newer.
+    @classmethod
+    @t.overload
+    def var(
+        cls,
+        type: t.Type[T],
+        name: str,
+        parser: t.Optional[t.Callable[[str], T]] = None,
+        validator: t.Optional[t.Callable[[T], None]] = None,
+        map: t.Optional[MapType] = None,
+        default: t.Union[T, NoDefaultType] = NoDefault,
+        deprecations: t.Optional[t.List[DeprecationInfo]] = None,
+        private: bool = False,
+        help: t.Optional[str] = None,
+        help_type: t.Optional[str] = None,
+        help_default: t.Optional[str] = None,
+    ) -> EnvVariable[T]:
+        ...
+
+    @classmethod
+    @t.overload
+    def var(
+        cls,
+        type: object,
+        name: str,
+        parser: t.Optional[t.Callable[[str], T]] = None,
+        validator: t.Optional[t.Callable[[T], None]] = None,
+        map: t.Optional[MapType] = None,
+        default: t.Union[T, NoDefaultType] = NoDefault,
+        deprecations: t.Optional[t.List[DeprecationInfo]] = None,
+        private: bool = False,
+        help: t.Optional[str] = None,
+        help_type: t.Optional[str] = None,
+        help_default: t.Optional[str] = None,
+    ) -> EnvVariable[T]:
+        ...
+
     @classmethod
     def var(
         cls,
-        type: t.Union[object, t.Type[T]],
+        type: object,
         name: str,
         parser: t.Optional[t.Callable[[str], T]] = None,
         validator: t.Optional[t.Callable[[T], None]] = None,
@@ -362,11 +400,47 @@ class Env(metaclass=EnvMeta):
             help_type,
             help_default,
         )
+
+    @classmethod
+    @t.overload
+    def v(
+        cls,
+        type: t.Type[T],
+        name: str,
+        parser: t.Optional[t.Callable[[str], T]] = None,
+        validator: t.Optional[t.Callable[[T], None]] = None,
+        map: t.Optional[MapType] = None,
+        default: t.Union[T, NoDefaultType] = NoDefault,
+        deprecations: t.Optional[t.List[DeprecationInfo]] = None,
+        private: bool = False,
+        help: t.Optional[str] = None,
+        help_type: t.Optional[str] = None,
+        help_default: t.Optional[str] = None,
+    ) -> EnvVariable[T]:
+        ...
+
+    @classmethod
+    @t.overload
+    def v(
+        cls,
+        type: object,
+        name: str,
+        parser: t.Optional[t.Callable[[str], T]] = None,
+        validator: t.Optional[t.Callable[[T], None]] = None,
+        map: t.Optional[MapType] = None,
+        default: t.Union[T, NoDefaultType] = NoDefault,
+        deprecations: t.Optional[t.List[DeprecationInfo]] = None,
+        private: bool = False,
+        help: t.Optional[str] = None,
+        help_type: t.Optional[str] = None,
+        help_default: t.Optional[str] = None,
+    ) -> EnvVariable[T]:
+        ...
 
     @classmethod
     def v(
         cls,
-        type: t.Union[object, t.Type[T]],
+        type: object,
         name: str,
         parser: t.Optional[t.Callable[[str], T]] = None,
         validator: t.Optional[t.Callable[[T], None]] = None,
@@ -392,8 +466,6 @@ class Env(metaclass=EnvMeta):
             help_default,
         )
 
-    # Union type forms such as Optional[T] are not type objects. TypeForm is
-    # only available in the standard library on Python 3.15 and newer.
     @classmethod
     def der(cls, type: object, derivation: t.Callable[[C], T]) -> DerivedVariable[T]:
         return DerivedVariable(type, derivation)
@@ -407,6 +479,20 @@ class Env(metaclass=EnvMeta):
     def items(
         cls, recursive: bool = False, include_derived: t.Literal[False] = False
     ) -> t.Iterator[t.Tuple[str, EnvVariable[t.Any]]]:
+        ...
+
+    @classmethod
+    @t.overload
+    def items(
+        cls, *, include_derived: t.Literal[True]
+    ) -> t.Iterator[t.Tuple[str, t.Union[EnvVariable[t.Any], DerivedVariable[t.Any]]]]:
+        ...
+
+    @classmethod
+    @t.overload
+    def items(
+        cls, *, include_derived: bool
+    ) -> t.Iterator[t.Tuple[str, t.Union[EnvVariable[t.Any], DerivedVariable[t.Any]]]]:
         ...
 
     @classmethod

@@ -57,3 +57,14 @@ def test_pyright_types():
     assert code != 0
     assert output.count(" - error:") == 8
     assert "8 errors, 0 warnings, 0 informations" in output
+
+
+def test_factory_types():
+    for config in ("pyproject.toml", "tests/mypy_no_plugin.ini"):
+        stdout, stderr, code = mypy(
+            "--config-file", config, "tests/factory_types_test.py"
+        )
+        assert code == 0, (stdout + stderr).decode()
+
+    out, _, code = pyright("tests/factory_types_test.py")
+    assert code == 0, out.decode()
