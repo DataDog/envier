@@ -492,21 +492,7 @@ class Env(metaclass=EnvMeta):
     @classmethod
     @t.overload
     def items(
-        cls, *, include_derived: t.Literal[True]
-    ) -> t.Iterator[t.Tuple[str, t.Union[EnvVariable[t.Any], DerivedVariable[t.Any]]]]:
-        ...
-
-    @classmethod
-    @t.overload
-    def items(
         cls, *, include_derived: bool
-    ) -> t.Iterator[t.Tuple[str, t.Union[EnvVariable[t.Any], DerivedVariable[t.Any]]]]:
-        ...
-
-    @classmethod
-    @t.overload
-    def items(
-        cls, recursive: bool, include_derived: t.Literal[True]
     ) -> t.Iterator[t.Tuple[str, t.Union[EnvVariable[t.Any], DerivedVariable[t.Any]]]]:
         ...
 

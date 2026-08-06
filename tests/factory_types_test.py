@@ -14,6 +14,17 @@ class Config(En):
 if t.TYPE_CHECKING:
     required: int = Config().required
     required_short: str = Config().required_short
-    items: t.Iterator[
+
+    variable_items: t.Iterator[t.Tuple[str, EnvVariable[t.Any]]]
+    variable_items = Config.items()
+    variable_items = Config.items(include_derived=False)
+    variable_items = Config.items(False, False)
+
+    all_items: t.Iterator[
         t.Tuple[str, t.Union[EnvVariable[t.Any], DerivedVariable[t.Any]]]
-    ] = Config.items(include_derived=True)
+    ]
+    include_derived: bool = True
+    all_items = Config.items(include_derived=True)
+    all_items = Config.items(include_derived=include_derived)
+    all_items = Config.items(False, True)
+    all_items = Config.items(False, include_derived)
