@@ -200,7 +200,7 @@ class EnvVariable(t.Generic[T]):
 class DerivedVariable(t.Generic[T]):
     def __init__(
         self,
-        type: object,
+        type: object,  # Accept Optional[T] and other type forms.
         derivation: t.Callable[..., T],
     ) -> None:
         self.type = type
@@ -358,7 +358,7 @@ class Env(metaclass=EnvMeta):
     @t.overload
     def var(
         cls,
-        type: object,
+        type: object,  # Accept Optional[T] and other type forms.
         name: str,
         parser: t.Optional[t.Callable[[str], T]] = None,
         validator: t.Optional[t.Callable[[T], None]] = None,
@@ -375,7 +375,7 @@ class Env(metaclass=EnvMeta):
     @classmethod
     def var(
         cls,
-        type: object,
+        type: object,  # Accept Optional[T] and other type forms.
         name: str,
         parser: t.Optional[t.Callable[[str], T]] = None,
         validator: t.Optional[t.Callable[[T], None]] = None,
@@ -423,7 +423,7 @@ class Env(metaclass=EnvMeta):
     @t.overload
     def v(
         cls,
-        type: object,
+        type: object,  # Accept Optional[T] and other type forms.
         name: str,
         parser: t.Optional[t.Callable[[str], T]] = None,
         validator: t.Optional[t.Callable[[T], None]] = None,
@@ -440,7 +440,7 @@ class Env(metaclass=EnvMeta):
     @classmethod
     def v(
         cls,
-        type: object,
+        type: object,  # Accept Optional[T] and other type forms.
         name: str,
         parser: t.Optional[t.Callable[[str], T]] = None,
         validator: t.Optional[t.Callable[[T], None]] = None,
@@ -467,11 +467,19 @@ class Env(metaclass=EnvMeta):
         )
 
     @classmethod
-    def der(cls, type: object, derivation: t.Callable[[C], T]) -> DerivedVariable[T]:
+    def der(
+        cls,
+        type: object,  # Accept Optional[T] and other type forms.
+        derivation: t.Callable[[C], T],
+    ) -> DerivedVariable[T]:
         return DerivedVariable(type, derivation)
 
     @classmethod
-    def d(cls, type: object, derivation: t.Callable[[C], T]) -> DerivedVariable[T]:
+    def d(
+        cls,
+        type: object,  # Accept Optional[T] and other type forms.
+        derivation: t.Callable[[C], T],
+    ) -> DerivedVariable[T]:
         return cls.der(type, derivation)
 
     @classmethod
