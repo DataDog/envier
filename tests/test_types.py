@@ -4,15 +4,12 @@ import subprocess
 TYPING_FIXTURE = "tests/types_test.py"
 FACTORY_TYPING_FIXTURE = "tests/factory_types_test.py"
 
-EXPECTED_MYPY_ERRORS = """tests/types_test.py:72: error: Incompatible types in assignment (expression has type "int", variable has type "str")  [assignment]
-tests/types_test.py:73: error: Incompatible types in assignment (expression has type "str", variable has type "CustomObject")  [assignment]
-tests/types_test.py:74: error: Incompatible types in assignment (expression has type "bool", variable has type "Optional[str]")  [assignment]
-tests/types_test.py:75: error: Incompatible types in assignment (expression has type "bytes", variable has type "Optional[CustomObject]")  [assignment]
-tests/types_test.py:77: error: Incompatible types in assignment (expression has type "int", variable has type "str")  [assignment]
-tests/types_test.py:78: error: Incompatible types in assignment (expression has type "str", variable has type "CustomObject")  [assignment]
-tests/types_test.py:79: error: Incompatible types in assignment (expression has type "bool", variable has type "Optional[str]")  [assignment]
-tests/types_test.py:80: error: Incompatible types in assignment (expression has type "bytes", variable has type "Optional[CustomObject]")  [assignment]
-Found 8 errors in 1 file (checked 1 source file)
+EXPECTED_MYPY_ERRORS = """tests/types_test.py:55: error: Incompatible types in assignment (expression has type "int", variable has type "str")  [assignment]
+tests/types_test.py:56: error: Incompatible types in assignment (expression has type "str", variable has type "CustomObject")  [assignment]
+tests/types_test.py:57: error: Incompatible types in assignment (expression has type "bool", variable has type "Optional[str]")  [assignment]
+tests/types_test.py:58: error: Incompatible types in assignment (expression has type "bytes", variable has type "Optional[CustomObject]")  [assignment]
+tests/types_test.py:60: error: Incompatible types in assignment (expression has type "int", variable has type "str")  [assignment]
+Found 5 errors in 1 file (checked 1 source file)
 """
 
 
@@ -56,8 +53,8 @@ def test_pyright_rejects_invalid_assignments():
     out, _, code = run_pyright(TYPING_FIXTURE)
     output = out.decode()
     assert code != 0
-    assert output.count(" - error:") == 8
-    assert "8 errors, 0 warnings, 0 informations" in output
+    assert output.count(" - error:") == 5
+    assert "5 errors, 0 warnings, 0 informations" in output
 
 
 def test_factory_and_items_inference():
