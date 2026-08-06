@@ -5,6 +5,10 @@ from envier import En
 from envier import EnvVariable
 
 
+VariableItem = t.Tuple[str, EnvVariable[t.Any]]
+DeclarationItem = t.Tuple[str, t.Union[EnvVariable[t.Any], DerivedVariable[t.Any]]]
+
+
 class Config(En):
     required = En.var(int, "required")
     required_short = En.v(str, "required_short")
@@ -12,19 +16,26 @@ class Config(En):
 
 
 if t.TYPE_CHECKING:
+    # A required variable infers its value type without a default or parser.
     required: int = Config().required
     required_short: str = Config().required_short
 
-    variable_items: t.Iterator[t.Tuple[str, EnvVariable[t.Any]]]
-    variable_items = Config.items()
-    variable_items = Config.items(include_derived=False)
-    variable_items = Config.items(False, False)
+    # Omitting include_derived, or passing False, keeps the narrow item type.
+    default_items: t.Iterator[VariableItem] = Config.items()
+    keyword_variable_items: t.Iterator[VariableItem] = Config.items(
+        include_derived=False
+    )
+    positional_variable_items: t.Iterator[VariableItem] = Config.items(False, False)
 
-    all_items: t.Iterator[
-        t.Tuple[str, t.Union[EnvVariable[t.Any], DerivedVariable[t.Any]]]
-    ]
+    # True, or a runtime bool, may include either kind of declaration.
     include_derived: bool = True
-    all_items = Config.items(include_derived=True)
-    all_items = Config.items(include_derived=include_derived)
-    all_items = Config.items(False, True)
-    all_items = Config.items(False, include_derived)
+    keyword_derived_items: t.Iterator[DeclarationItem] = Config.items(
+        include_derived=True
+    )
+    keyword_maybe_derived_items: t.Iterator[DeclarationItem] = Config.items(
+        include_derived=include_derived
+    )
+    positional_derived_items: t.Iterator[DeclarationItem] = Config.items(False, True)
+    positional_maybe_derived_items: t.Iterator[DeclarationItem] = Config.items(
+        False, include_derived
+    )

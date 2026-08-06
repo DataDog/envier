@@ -53,7 +53,7 @@ co_var: DerivedVariable[CustomObject] = Config.co
 derived_foo: str = config.derived_foo
 ignored_argument: bool = config.ignored_argument
 
-# OK
+# Instance access exposes values: these assignments must type-check.
 config.foo = "world"
 config.co = CustomObject()
 config.opt = "False"
@@ -68,7 +68,7 @@ config.subconfig.opt = None
 config.subconfig.opt_co = config.co
 config.subconfig.opt_co = None
 
-# NOK
+# Each checker must reject all eight invalid assignments below.
 config.foo = 42
 config.co = "CustomObject()"
 config.opt = False
