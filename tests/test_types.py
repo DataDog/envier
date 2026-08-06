@@ -57,17 +57,3 @@ def test_pyright_types():
     assert code != 0
     assert output.count(" - error:") == 8
     assert "8 errors, 0 warnings, 0 informations" in output
-
-
-def test_derivation_owner_types():
-    mypy_out, _, mypy_code = mypy(
-        "--config-file",
-        "tests/mypy_no_plugin.ini",
-        "tests/derivation_types_test.py",
-    )
-    assert mypy_code != 0
-    assert b'No overload variant of "__get__"' in mypy_out
-
-    pyright_out, _, pyright_code = pyright("tests/derivation_types_test.py")
-    assert pyright_code != 0
-    assert b'Cannot access attribute "derived" for class "BadConfig"' in pyright_out

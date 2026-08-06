@@ -216,24 +216,22 @@ class DerivedVariable(t.Generic[T]):
             )
         return value
 
-
-class _OwnedDerivedVariable(DerivedVariable[T], t.Generic[C, T]):
     if t.TYPE_CHECKING:
 
         @t.overload
-        def __get__(self, instance: None, owner: t.Type[C]) -> "DerivedVariable[T]":
+        def __get__(self, instance: None, owner: t.Type["Env"]) -> "DerivedVariable[T]":
             ...
 
         @t.overload
-        def __get__(self, instance: C, owner: t.Type[C]) -> T:
+        def __get__(self, instance: "Env", owner: t.Type["Env"]) -> T:
             ...
 
         def __get__(
-            self, instance: t.Optional[C], owner: t.Type[C]
+            self, instance: t.Optional["Env"], owner: t.Type["Env"]
         ) -> t.Union["DerivedVariable[T]", T]:
             ...
 
-        def __set__(self, instance: C, value: T) -> None:
+        def __set__(self, instance: "Env", value: T) -> None:
             ...
 
 
@@ -397,45 +395,11 @@ class Env(metaclass=EnvMeta):
     # Union type forms such as Optional[T] are not type objects. TypeForm is
     # only available in the standard library on Python 3.15 and newer.
     @classmethod
-    @t.overload
-    def der(
-        cls, type: object, derivation: t.Callable[["Env"], T]
-    ) -> _OwnedDerivedVariable["Env", T]:
-        ...
+    def der(cls, type: object, derivation: t.Callable[[C], T]) -> DerivedVariable[T]:
+        return DerivedVariable(type, derivation)
 
     @classmethod
-    @t.overload
-    def der(
-        cls, type: object, derivation: t.Callable[[C], T]
-    ) -> _OwnedDerivedVariable[C, T]:
-        ...
-
-    @classmethod
-    def der(
-        cls, type: object, derivation: t.Callable[..., T]
-    ) -> _OwnedDerivedVariable[t.Any, T]:
-        return t.cast(
-            _OwnedDerivedVariable[t.Any, T], DerivedVariable(type, derivation)
-        )
-
-    @classmethod
-    @t.overload
-    def d(
-        cls, type: object, derivation: t.Callable[["Env"], T]
-    ) -> _OwnedDerivedVariable["Env", T]:
-        ...
-
-    @classmethod
-    @t.overload
-    def d(
-        cls, type: object, derivation: t.Callable[[C], T]
-    ) -> _OwnedDerivedVariable[C, T]:
-        ...
-
-    @classmethod
-    def d(
-        cls, type: object, derivation: t.Callable[..., T]
-    ) -> _OwnedDerivedVariable[t.Any, T]:
+    def d(cls, type: object, derivation: t.Callable[[C], T]) -> DerivedVariable[T]:
         return cls.der(type, derivation)
 
     @classmethod
