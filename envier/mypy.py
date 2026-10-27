@@ -18,7 +18,6 @@ from mypy.types import Instance
 from mypy.types import ProperType
 from mypy.types import Type
 
-
 _envier_attr_makers = frozenset({"v", "d", "var", "der"})
 
 _envier_base_classes = frozenset({"envier.En", "envier.Env"})

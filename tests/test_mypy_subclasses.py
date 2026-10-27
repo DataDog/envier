@@ -16,8 +16,7 @@ from tests.test_types import mypy
 )
 @pytest.mark.parametrize("invalid_assignments", [False, True])
 def test_subclass_types(tmp_path, import_statement, base, invalid_assignments):
-    source = dedent(
-        """\
+    source = dedent("""\
         from typing import Optional
         {import_statement}
 
@@ -53,19 +52,16 @@ def test_subclass_types(tmp_path, import_statement, base, invalid_assignments):
 
         def nested_enabled() -> bool:
             return config.nested.enabled
-        """
-    ).format(import_statement=import_statement, base=base)
+        """).format(import_statement=import_statement, base=base)
     if invalid_assignments:
-        source += dedent(
-            """\
+        source += dedent("""\
             config.enabled = "wrong"
             config.count = "wrong"
             config.derived = "wrong"
             config.short_derived = "wrong"
             config.optional = 42
             config.nested.enabled = "wrong"
-            """
-        )
+            """)
 
     path = tmp_path / "config_types.py"
     path.write_text(source)
