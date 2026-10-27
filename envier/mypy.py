@@ -33,9 +33,10 @@ def _envier_attr_callback(ctx: MethodContext) -> ProperType:
     return make_simplified_union({_.ret_type for _ in arg_type.items})  # type: ignore[arg-type]
 
 
-def _is_envier_class(node: object) -> bool:
-    return isinstance(node, TypeInfo) and (
-        node.fullname == "envier.env.Env" or node.has_base("envier.env.Env")
+def _is_envier_class(fullname: str, node: object) -> bool:
+    return fullname in _envier_base_classes or (
+        isinstance(node, TypeInfo)
+        and (node.fullname == "envier.env.Env" or node.has_base("envier.env.Env"))
     )
 
 
@@ -49,9 +50,8 @@ def _envier_base_class_callback(ctx: ClassDefContext) -> None:
                 or not isinstance(decl.callee, MemberExpr)
                 or decl.callee.name not in _envier_attr_makers
                 or not isinstance(decl.callee.expr, (NameExpr, MemberExpr))
-                or not (
-                    decl.callee.expr.fullname in _envier_base_classes
-                    or _is_envier_class(decl.callee.expr.node)
+                or not _is_envier_class(
+                    decl.callee.expr.fullname, decl.callee.expr.node
                 )
             ):
                 # We assume a single assignment per line, so this can't be an
@@ -71,17 +71,9 @@ def _envier_base_class_callback(ctx: ClassDefContext) -> None:
             # Check that we have an expected base class. If it also has an
             # __item__ attribute, we should create a field with that name in the
             # parent class.
-            if (
-                any(
-                    isinstance(base, (NameExpr, MemberExpr))
-                    and (
-                        base.fullname in _envier_base_classes
-                        or _is_envier_class(base.node)
-                    )
-                    for base in stmt.base_type_exprs
-                )
-                and "__item__" in stmt.info.names
-            ):
+            if {
+                _.fullname for _ in stmt.base_type_exprs
+            } & _envier_base_classes and "__item__" in stmt.info.names:
                 for s in (_ for _ in stmt.defs.body if isinstance(_, AssignmentStmt)):
                     if "__item__" in {_.name for _ in s.lvalues}:
                         break
@@ -104,7 +96,7 @@ class EnvierPlugin(Plugin):
             return None
 
         symbol = self.lookup_fully_qualified(owner)
-        if symbol is not None and _is_envier_class(symbol.node):
+        if symbol is not None and _is_envier_class(owner, symbol.node):
             # We use this callback to override the the method return value to
             # match the attribute value, which is also inferred by the `type`
             # argument.
@@ -116,9 +108,7 @@ class EnvierPlugin(Plugin):
         self, fullname: str
     ) -> t.Optional[t.Callable[[ClassDefContext], None]]:
         symbol = self.lookup_fully_qualified(fullname)
-        if fullname in _envier_base_classes or (
-            symbol is not None and _is_envier_class(symbol.node)
-        ):
+        if _is_envier_class(fullname, symbol.node if symbol is not None else None):
             # We use this callback to override the class attribute types to
             # match the ones declared by the `type` argument of the Env methods.
             return _envier_base_class_callback

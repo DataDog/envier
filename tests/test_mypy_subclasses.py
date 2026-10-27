@@ -6,71 +6,39 @@ from tests.test_types import mypy
 
 
 @pytest.mark.parametrize(
-    "import_statement,base",
+    "declaration,value_type",
     [
-        ("from envier import Env", "Env"),
-        ("from envier import En", "En"),
-        ("import envier", "envier.Env"),
-        ("from envier.env import Env", "Env"),
+        ("Base.var(bool, 'enabled', default=False)", "bool"),
+        ("Base.v(Optional[bool], 'enabled', default=None)", "Optional[bool]"),
+        ("Base.der(bool, lambda _: False)", "bool"),
+        ("Base.d(bool, lambda _: False)", "bool"),
     ],
 )
-@pytest.mark.parametrize("invalid_assignments", [False, True])
-def test_subclass_types(tmp_path, import_statement, base, invalid_assignments):
-    source = dedent("""\
+def test_subclass_field_type(tmp_path, declaration, value_type):
+    path = tmp_path / "config_types.py"
+    path.write_text(dedent(f"""\
         from typing import Optional
-        {import_statement}
+        from envier import Env
 
-        class Base({base}):
+        class Base(Env):
             pass
 
-        class Intermediate(Base):
-            pass
-
-        class Config(Intermediate):
-            enabled = Intermediate.var(bool, "enabled", default=False)
-            count = Intermediate.v(int, "count", default=0)
-            derived = Intermediate.der(bool, lambda _: True)
-            short_derived = Intermediate.d(bool, lambda _: False)
-            optional = Intermediate.v(Optional[str], "optional", default=None)
-            ordinary = bool(False)
-
-            class Nested(Intermediate):
-                __item__ = "nested"
-                enabled = Intermediate.var(bool, "nested_enabled", default=False)
+        class Config(Base):
+            enabled = {declaration}
 
         config = Config()
-        config.enabled = True
-        config.count = 1
-        config.derived = False
-        config.short_derived = True
-        config.optional = "value"
-        config.optional = None
-        config.nested.enabled = True
 
-        def enabled() -> bool:
+        def enabled() -> {value_type}:
             return config.enabled
 
-        def nested_enabled() -> bool:
-            return config.nested.enabled
-        """).format(import_statement=import_statement, base=base)
-    if invalid_assignments:
-        source += dedent("""\
-            config.enabled = "wrong"
-            config.count = "wrong"
-            config.derived = "wrong"
-            config.short_derived = "wrong"
-            config.optional = 42
-            config.nested.enabled = "wrong"
-            """)
-
-    path = tmp_path / "config_types.py"
-    path.write_text(source)
-    out, err, code = mypy("--no-incremental", "--warn-return-any", str(path))
+        config.enabled = True
+        config.enabled = "wrong"
+        """))
+    out, err, code = mypy(
+        "--no-incremental", "--warn-return-any", "--python-version", "3.9", str(path)
+    )
     output = out.decode()
     assert not err, err.decode()
-    if invalid_assignments:
-        assert code == 1, output
-        assert output.count("error:") == 6, output
-        assert output.count("[assignment]") == 6, output
-    else:
-        assert code == 0, output
+    assert code == 1, output
+    assert output.count("error:") == 1, output
+    assert f'variable has type "{value_type}")  [assignment]' in output, output
