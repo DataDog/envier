@@ -5,7 +5,6 @@
 
 Envier is a Python library for extracting configuration from environment
 variables in a declarative and (eventually) 12-factor-app-compliant way.
-Envier supports Python 3.9 and later.
 
 
 ## Usage
