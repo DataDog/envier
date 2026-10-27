@@ -69,8 +69,8 @@ template = "tests"
 dependencies = [
   "pytest",
   "mypy==1.15.0",
-  "sphinx",
-  "alabaster",
+  "sphinx==5.1.1",
+  "alabaster==0.7.12",
 
 ]
 [tool.hatch.envs.tests.scripts]
@@ -80,17 +80,17 @@ tests = "pytest -vv {args}"
 python = ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14", "3.15"]
 
 [tool.hatch.envs.checks]
-python = "3.14"
+python = "3.10"
 dependencies = [
   "black==26.10.1",
   "mypy==1.15.0",
-  "flake8",
-  "flake8-annotations",
+  "flake8~=5.0.4",
+  "flake8-annotations~=2.9.1",
   "flake8-black",
-  "flake8-bugbear",
-  "flake8-docstrings",
+  "flake8-bugbear~=22.9.23",
+  "flake8-docstrings~=1.6.0",
   "flake8-import-order",
-  "flake8-isort",
+  "flake8-isort~=5.0.0",
 ]
 
 [tool.hatch.envs.checks.scripts]
