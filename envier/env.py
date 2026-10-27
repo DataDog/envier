@@ -135,7 +135,6 @@ class EnvVariable(t.Generic[T]):
                             full_name,
                         ),
                         DeprecationWarning,
-                        stacklevel=4,
                     )
                     break
 
