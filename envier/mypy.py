@@ -1,6 +1,7 @@
 import typing as t
 
 from mypy.exprtotype import expr_to_unanalyzed_type
+from mypy.nodes import ARG_POS
 from mypy.nodes import AssignmentStmt
 from mypy.nodes import CallExpr
 from mypy.nodes import ClassDef
@@ -58,11 +59,18 @@ def _envier_base_class_callback(ctx: ClassDefContext) -> None:
                 # envier attribute maker.
                 continue
 
+            if "type" in decl.arg_names:
+                type_arg = decl.args[decl.arg_names.index("type")]
+            elif decl.args and decl.arg_kinds[0] == ARG_POS:
+                type_arg = decl.args[0]
+            else:
+                continue
+
             (attr,) = stmt.lvalues
             assert isinstance(attr, NameExpr) and isinstance(attr.node, Var), attr
 
             attr.node.type = ctx.api.anal_type(
-                expr_to_unanalyzed_type(decl.args[0], ctx.api.options)
+                expr_to_unanalyzed_type(type_arg, ctx.api.options)
             )
 
             attr.is_inferred_def = False

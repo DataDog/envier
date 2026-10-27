@@ -5,6 +5,7 @@ import pytest
 from tests.test_types import mypy
 
 
+@pytest.mark.parametrize("owner", ["Env", "Base"])
 @pytest.mark.parametrize(
     "declaration,value_type",
     [
@@ -12,9 +13,14 @@ from tests.test_types import mypy
         ("Base.v(Optional[bool], 'enabled', default=None)", "Optional[bool]"),
         ("Base.der(bool, lambda _: False)", "bool"),
         ("Base.d(bool, lambda _: False)", "bool"),
+        ("Base.var(name='enabled', type=bool, default=False)", "bool"),
+        ("Base.v(name='enabled', type=Optional[bool], default=None)", "Optional[bool]"),
+        ("Base.der(derivation=lambda _: False, type=bool)", "bool"),
+        ("Base.d(derivation=lambda _: False, type=bool)", "bool"),
     ],
 )
-def test_subclass_field_type(tmp_path, declaration, value_type):
+def test_subclass_field_type(tmp_path, owner, declaration, value_type):
+    declaration = declaration.replace("Base.", f"{owner}.")
     path = tmp_path / "config_types.py"
     path.write_text(dedent(f"""\
         from typing import Optional
