@@ -69,8 +69,9 @@ def test_env_deprecations(monkeypatch, deprecations, match, prefix):
         foo = Env.var(int, "FOO", deprecations=deprecations)
 
     message = " ".join((full_deprecated_name, match, "Use %s instead" % full_name))
-    with pytest.warns(DeprecationWarning, match=message):
+    with pytest.warns(DeprecationWarning, match=message) as record:
         assert Config().foo == 42
+    assert record[0].filename == __file__
 
 
 @pytest.mark.parametrize(

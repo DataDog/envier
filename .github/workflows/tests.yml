@@ -9,7 +9,7 @@ jobs:
     name: Test with Python ${{ matrix.python-version }}
     strategy:
       matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14", "3.15"]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -19,6 +19,5 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - run: |
-          # Hatch on Python 3.8 requires virtualenv's pre-21 discovery API.
-          pip install hatch "virtualenv<21"
+          pip install hatch
           hatch run tests.py${{ matrix.python-version }}:tests
