@@ -14,7 +14,7 @@ def mypy(*args, **kwargs):
 
 
 def test_types():
-    out, _, code = mypy("tests/types_test.py")
+    out, _, code = mypy("--python-version", "3.9", "tests/types_test.py")
     assert code != 0
     assert (
         out.decode()
