@@ -8,6 +8,7 @@ from mypy.nodes import ClassDef
 from mypy.nodes import MemberExpr
 from mypy.nodes import NameExpr
 from mypy.nodes import StrExpr
+from mypy.nodes import TypeAlias
 from mypy.nodes import TypeInfo
 from mypy.nodes import Var
 from mypy.plugin import ClassDefContext
@@ -21,7 +22,7 @@ from mypy.types import Type
 
 _envier_attr_makers = frozenset({"v", "d", "var", "der"})
 
-_envier_base_classes = frozenset({"envier.En", "envier.Env"})
+_envier_base_classes = frozenset({"envier.En", "envier.Env", "envier.env.Env"})
 
 
 def _envier_attr_callback(ctx: MethodContext) -> ProperType:
@@ -41,6 +42,19 @@ def _is_envier_class(fullname: str, node: object) -> bool:
     )
 
 
+def _is_envier_maker(node: object, name: str) -> bool:
+    if isinstance(node, TypeAlias) and isinstance(node.target, Instance):
+        node = node.target.type
+    if not isinstance(node, TypeInfo) or name not in _envier_attr_makers:
+        return False
+    method = node.get(name)
+    return (
+        method is not None
+        and method.node is not None
+        and method.node.fullname == f"envier.env.Env.{name}"
+    )
+
+
 def _envier_base_class_callback(ctx: ClassDefContext) -> None:
     for stmt in ctx.cls.defs.body:
         if isinstance(stmt, AssignmentStmt):
@@ -49,11 +63,8 @@ def _envier_base_class_callback(ctx: ClassDefContext) -> None:
                 len(stmt.lvalues) != 1
                 or not isinstance(decl, CallExpr)
                 or not isinstance(decl.callee, MemberExpr)
-                or decl.callee.name not in _envier_attr_makers
                 or not isinstance(decl.callee.expr, (NameExpr, MemberExpr))
-                or not _is_envier_class(
-                    decl.callee.expr.fullname, decl.callee.expr.node
-                )
+                or not _is_envier_maker(decl.callee.expr.node, decl.callee.name)
             ):
                 # We assume a single assignment per line, so this can't be an
                 # envier attribute maker.
@@ -80,7 +91,9 @@ def _envier_base_class_callback(ctx: ClassDefContext) -> None:
             # __item__ attribute, we should create a field with that name in the
             # parent class.
             if {
-                _.fullname for _ in stmt.base_type_exprs
+                _.fullname
+                for _ in stmt.base_type_exprs
+                if isinstance(_, (NameExpr, MemberExpr))
             } & _envier_base_classes and "__item__" in stmt.info.names:
                 for s in (_ for _ in stmt.defs.body if isinstance(_, AssignmentStmt)):
                     if "__item__" in {_.name for _ in s.lvalues}:
@@ -92,7 +105,10 @@ def _envier_base_class_callback(ctx: ClassDefContext) -> None:
                 assert isinstance(s.rvalue, StrExpr), s.rvalue
 
                 # Move the statement over from the class name to the item name
-                ctx.cls.info.names[s.rvalue.value] = ctx.cls.info.names.pop(stmt.name)
+                if stmt.name in ctx.cls.info.names:
+                    ctx.cls.info.names[s.rvalue.value] = ctx.cls.info.names.pop(
+                        stmt.name
+                    )
 
 
 class EnvierPlugin(Plugin):
@@ -104,7 +120,7 @@ class EnvierPlugin(Plugin):
             return None
 
         symbol = self.lookup_fully_qualified(owner)
-        if symbol is not None and _is_envier_class(owner, symbol.node):
+        if symbol is not None and _is_envier_maker(symbol.node, name):
             # We use this callback to override the the method return value to
             # match the attribute value, which is also inferred by the `type`
             # argument.
