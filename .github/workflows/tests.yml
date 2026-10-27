@@ -19,5 +19,6 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - run: |
-          pip install hatch
+          # Hatch on Python 3.8 requires virtualenv's pre-21 discovery API.
+          pip install hatch "virtualenv<21"
           hatch run tests.py${{ matrix.python-version }}:tests
