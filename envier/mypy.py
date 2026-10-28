@@ -22,6 +22,8 @@ from mypy.nodes import Var
 from mypy.plugin import ClassDefContext
 from mypy.plugin import MethodContext
 from mypy.plugin import Plugin
+from mypy.semanal_shared import PRIORITY_FALLBACKS
+from mypy.semanal_shared import SemanticAnalyzerInterface
 from mypy.typeops import make_simplified_union
 from mypy.types import FunctionLike
 from mypy.types import Instance
@@ -102,12 +104,26 @@ def _rename_nested_type(node: object, old: str, new: str) -> None:
             _rename_nested_type(node.impl, old, new)
 
 
+def _apply_nested_items(info: TypeInfo, items: t.List[t.Tuple[ClassDef, str]]) -> None:
+    symbols = [
+        (stmt, name, info.names[stmt.name])
+        for stmt, name in items
+        if stmt.name in info.names and info.names[stmt.name].node is stmt.info
+    ]
+    for stmt, _, _ in symbols:
+        info.names.pop(stmt.name)
+    for stmt, name, symbol in symbols:
+        _rename_nested_type(stmt.info, stmt.info.fullname, f"{info.fullname}.{name}")
+        info.names[name] = symbol
+
+
 def _envier_base_class_callback(ctx: ClassDefContext) -> None:
     """Assign declared value types to fields created by var, v, der, or d."""
     # Renaming siblings before deferred nested classes are ready can corrupt
     # their symbols when semantic analysis revisits the class body.
     if any(isinstance(stmt, ClassDef) and not stmt.info for stmt in ctx.cls.defs.body):
         return
+    nested_items: t.List[t.Tuple[ClassDef, str]] = []
     for stmt in ctx.cls.defs.body:
         if isinstance(stmt, AssignmentStmt):
             decl = stmt.rvalue
@@ -176,17 +192,21 @@ def _envier_base_class_callback(ctx: ClassDefContext) -> None:
                 if not isinstance(s.rvalue, StrExpr):
                     continue
 
-                # Move the statement over from the class name to the item name
                 symbol = ctx.cls.info.names.get(stmt.name)
                 if symbol is not None and symbol.node is stmt.info:
-                    _rename_nested_type(
-                        stmt.info,
-                        stmt.info.fullname,
-                        f"{ctx.cls.info.fullname}.{s.rvalue.value}",
-                    )
-                    ctx.cls.info.names[s.rvalue.value] = ctx.cls.info.names.pop(
-                        stmt.name
-                    )
+                    nested_items.append((stmt, s.rvalue.value))
+                    # Expose aliases without replacing source definitions that
+                    # subsequent semantic passes still need to revisit.
+                    if s.rvalue.value not in ctx.cls.info.names:
+                        ctx.cls.info.names[s.rvalue.value] = symbol
+
+    if nested_items:
+        # Remove source names and resolve collisions only after semantic analysis.
+        api = t.cast(SemanticAnalyzerInterface, ctx.api)
+        api.schedule_patch(
+            PRIORITY_FALLBACKS,
+            lambda: _apply_nested_items(ctx.cls.info, nested_items),
+        )
 
 
 class EnvierPlugin(Plugin):

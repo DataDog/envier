@@ -317,3 +317,35 @@ def test_specialized_generic_owner(tmp_path, owner):
     assert code == 1, out.decode()
     assert out.decode().count("error:") == 1, out.decode()
     assert "[assignment]" in out.decode(), out.decode()
+
+
+def test_nested_name_swap_with_later_deferral(tmp_path):
+    path = tmp_path / "deferred_swap.py"
+    path.write_text(dedent("""\
+        from envier import Env
+
+        class Base(Env):
+            pass
+
+        class Config(Base):
+            class Nested(Env):
+                __item__ = "nested"
+                enabled = Env.var(bool, "enabled", default=False)
+
+            class Replacement(Env):
+                __item__ = "Nested"
+                count = Env.var(int, "count", default=0)
+
+        later: "Later"
+        class Later:
+            pass
+
+        def enabled() -> bool:
+            return Config().nested.enabled
+
+        def count() -> int:
+            return Config().Nested.count
+        """))
+    out, err, code = mypy("--no-incremental", "--warn-return-any", str(path))
+    assert not err, err.decode()
+    assert code == 0, out.decode()
