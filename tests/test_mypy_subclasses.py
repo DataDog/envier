@@ -288,3 +288,32 @@ def test_invalid_type_value(tmp_path):
     assert not err, err.decode()
     assert code == 1, out.decode()
     assert "[arg-type]" in out.decode(), out.decode()
+
+
+@pytest.mark.parametrize("owner", ["GenericBase[int]", "Alias[int]"])
+def test_specialized_generic_owner(tmp_path, owner):
+    path = tmp_path / "generic_types.py"
+    path.write_text(dedent(f"""\
+        from typing import Generic, Optional, TypeVar
+        from envier import Env
+
+        T = TypeVar("T")
+        class GenericBase(Env, Generic[T]):
+            pass
+
+        Alias = GenericBase
+
+        class Config(GenericBase[int]):
+            enabled = {owner}.v(Optional[bool], "enabled", default=None)
+
+        def enabled() -> Optional[bool]:
+            return Config().enabled
+
+        Config().enabled = False
+        Config().enabled = "wrong"
+        """))
+    out, err, code = mypy("--no-incremental", "--warn-return-any", str(path))
+    assert not err, err.decode()
+    assert code == 1, out.decode()
+    assert out.decode().count("error:") == 1, out.decode()
+    assert "[assignment]" in out.decode(), out.decode()

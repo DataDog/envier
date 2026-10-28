@@ -10,6 +10,7 @@ from mypy.nodes import CallExpr
 from mypy.nodes import ClassDef
 from mypy.nodes import Decorator
 from mypy.nodes import FuncDef
+from mypy.nodes import IndexExpr
 from mypy.nodes import MemberExpr
 from mypy.nodes import NameExpr
 from mypy.nodes import OverloadedFuncDef
@@ -114,11 +115,17 @@ def _envier_base_class_callback(ctx: ClassDefContext) -> None:
                 len(stmt.lvalues) != 1
                 or not isinstance(decl, CallExpr)
                 or not isinstance(decl.callee, MemberExpr)
-                or not isinstance(decl.callee.expr, (NameExpr, MemberExpr))
-                or not _is_envier_maker(decl.callee.expr.node, decl.callee.name)
             ):
                 # We assume a single assignment per line, so this can't be an
                 # envier attribute maker.
+                continue
+
+            owner = decl.callee.expr
+            if isinstance(owner, IndexExpr):
+                owner = owner.base
+            if not isinstance(owner, (NameExpr, MemberExpr)) or not _is_envier_maker(
+                owner.node, decl.callee.name
+            ):
                 continue
 
             if "type" in decl.arg_names:
