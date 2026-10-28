@@ -1,6 +1,7 @@
 import typing as t
 
-from mypy.exprtotype import expr_to_unanalyzed_type
+from mypy import exprtotype
+from mypy import types
 from mypy.nodes import ARG_POS
 from mypy.nodes import ARG_STAR
 from mypy.nodes import ARG_STAR2
@@ -23,7 +24,9 @@ from mypy.plugin import Plugin
 from mypy.typeops import make_simplified_union
 from mypy.types import FunctionLike
 from mypy.types import Instance
+from mypy.types import RawExpressionType
 from mypy.types import Type
+from mypy.types import TypeType
 
 # Field declaration helpers for environment and derived values.
 _envier_attr_makers = frozenset({"v", "d", "var", "der"})
@@ -35,10 +38,18 @@ def _envier_attr_callback(ctx: MethodContext) -> Type:
     """Infer the value type returned by a field declaration helper."""
     if not ctx.arg_types[0] or ctx.arg_kinds[0][0] in (ARG_STAR, ARG_STAR2):
         return ctx.default_return_type
-    arg_type = ctx.arg_types[0][0]
+    arg_type = types.get_proper_type(ctx.arg_types[0][0])
+    if isinstance(arg_type, TypeType):
+        return arg_type.item
     if isinstance(arg_type, Instance):
         # WARNING: This returns an UnboundType which seems to match whatever!
-        return expr_to_unanalyzed_type(ctx.args[0][0], ctx.api.options)
+        try:
+            result = exprtotype.expr_to_unanalyzed_type(ctx.args[0][0], ctx.api.options)
+        except exprtotype.TypeTranslationError:
+            return ctx.default_return_type
+        return (
+            ctx.default_return_type if isinstance(result, RawExpressionType) else result
+        )
 
     if not isinstance(arg_type, FunctionLike):
         return ctx.default_return_type
@@ -117,13 +128,23 @@ def _envier_base_class_callback(ctx: ClassDefContext) -> None:
             else:
                 continue
 
+            if isinstance(type_arg, (NameExpr, MemberExpr)) and isinstance(
+                type_arg.node, Var
+            ):
+                # Runtime type values are handled by the method callback.
+                continue
+
             (attr,) = stmt.lvalues
             if not isinstance(attr, NameExpr) or not isinstance(attr.node, Var):
                 continue
 
-            field_type = ctx.api.anal_type(
-                expr_to_unanalyzed_type(type_arg, ctx.api.options)
-            )
+            try:
+                unanalyzed_type = exprtotype.expr_to_unanalyzed_type(
+                    type_arg, ctx.api.options
+                )
+            except exprtotype.TypeTranslationError:
+                continue
+            field_type = ctx.api.anal_type(unanalyzed_type)
             if field_type is None:
                 continue
             attr.node.type = field_type

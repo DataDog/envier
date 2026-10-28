@@ -236,3 +236,55 @@ def test_nested_item_incremental_cache(tmp_path):
         assert code == 1, out.decode()
         assert out.decode().count("error:") == 3, out.decode()
         assert out.decode().count("[assignment]") == 3, out.decode()
+
+
+@pytest.mark.parametrize("owner", ["Env", "Base"])
+@pytest.mark.parametrize("maker", ["var", "v", "der", "d"])
+@pytest.mark.parametrize("type_value", ["BoolType", "get_type()"])
+def test_runtime_type_value(tmp_path, owner, maker, type_value):
+    argument = (
+        "'enabled', default=False" if maker in ("var", "v") else "lambda _: False"
+    )
+    path = tmp_path / "runtime_types.py"
+    path.write_text(dedent(f"""\
+        from typing import Type
+        from envier import Env
+
+        class Base(Env):
+            pass
+
+        BoolType: Type[bool] = bool
+
+        def get_type() -> Type[bool]:
+            return bool
+
+        class Config(Base):
+            enabled = {owner}.{maker}({type_value}, {argument})
+
+        def enabled() -> bool:
+            return Config().enabled
+
+        Config().enabled = "wrong"
+        """))
+    out, err, code = mypy("--no-incremental", "--warn-return-any", str(path))
+    assert not err, err.decode()
+    assert code == 1, out.decode()
+    assert out.decode().count("error:") == 1, out.decode()
+    assert 'variable has type "bool")  [assignment]' in out.decode(), out.decode()
+
+
+def test_invalid_type_value(tmp_path):
+    path = tmp_path / "invalid_types.py"
+    path.write_text(dedent("""\
+        from envier import Env
+
+        class Base(Env):
+            pass
+
+        class Config(Base):
+            enabled = Base.var(1, "enabled")
+        """))
+    out, err, code = mypy("--no-incremental", str(path))
+    assert not err, err.decode()
+    assert code == 1, out.decode()
+    assert "[arg-type]" in out.decode(), out.decode()
