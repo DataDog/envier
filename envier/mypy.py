@@ -36,8 +36,12 @@ def _envier_attr_callback(ctx: MethodContext) -> Type:
     if not ctx.arg_types[0] or ctx.arg_kinds[0][0] in (ARG_STAR, ARG_STAR2):
         return ctx.default_return_type
     arg_type = types.get_proper_type(ctx.arg_types[0][0])
-    if isinstance(arg_type, TypeType):
-        return arg_type.item
+    type_items = arg_type.items if isinstance(arg_type, types.UnionType) else [arg_type]
+    type_items = [types.get_proper_type(item) for item in type_items]
+    if all(isinstance(item, TypeType) for item in type_items):
+        return make_simplified_union(
+            [t.cast(TypeType, item).item for item in type_items]
+        )
     if isinstance(arg_type, Instance):
         # WARNING: This returns an UnboundType which seems to match whatever!
         try:

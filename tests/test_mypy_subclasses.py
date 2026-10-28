@@ -20,13 +20,17 @@ from tests.test_types import mypy
         ("var(bool, 'enabled', default=DEFAULT)", "bool"),
         ("var(BoolType, 'enabled', default=False)", "bool"),
         ("var(get_type(), 'enabled', default=False)", "bool"),
+        ("var(ValueType, 'enabled', default=False)", "Union[bool, str]"),
     ],
 )
 def test_subclass_field_type(tmp_path, owner, declaration, value_type):
     base = owner if "[" in owner else f"{owner}[int]"
+    valid, invalid = (
+        ("'ok'", "b'wrong'") if value_type.startswith("Union[") else ("True", "'wrong'")
+    )
     path = tmp_path / "config_types.py"
     path.write_text(dedent(f"""\
-        from typing import Generic, Optional, Type, TypeVar
+        from typing import Generic, Optional, Type, TypeVar, Union
         from envier import Env
 
         T = TypeVar("T")
@@ -34,6 +38,7 @@ def test_subclass_field_type(tmp_path, owner, declaration, value_type):
             pass
         Alias = Base
         BoolType: Type[bool] = bool
+        ValueType: Union[Type[bool], Type[str]] = bool
         def get_type() -> Type[bool]:
             return bool
 
@@ -47,8 +52,8 @@ def test_subclass_field_type(tmp_path, owner, declaration, value_type):
         config = Config()
         def enabled() -> {value_type}:
             return config.enabled
-        config.enabled = True
-        config.enabled = "wrong"
+        config.enabled = {valid}
+        config.enabled = {invalid}
         """))
     out, err, code = mypy(
         "--no-incremental", "--warn-return-any", "--python-version", "3.9", str(path)
