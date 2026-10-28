@@ -20,12 +20,14 @@ from mypy.types import Instance
 from mypy.types import ProperType
 from mypy.types import Type
 
+# Field declaration helpers for environment and derived values.
 _envier_attr_makers = frozenset({"v", "d", "var", "der"})
 
 _envier_base_classes = frozenset({"envier.En", "envier.Env", "envier.env.Env"})
 
 
 def _envier_attr_callback(ctx: MethodContext) -> ProperType:
+    """Infer the value type returned by a field declaration helper."""
     arg_type = ctx.arg_types[0][0]
     if isinstance(arg_type, Instance):
         # WARNING: This returns an UnboundType which seems to match whatever!
@@ -36,6 +38,7 @@ def _envier_attr_callback(ctx: MethodContext) -> ProperType:
 
 
 def _is_envier_class(fullname: str, node: object) -> bool:
+    """Recognize Env aliases and subclasses that expose declaration helpers."""
     return fullname in _envier_base_classes or (
         isinstance(node, TypeInfo)
         and (node.fullname == "envier.env.Env" or node.has_base("envier.env.Env"))
@@ -43,6 +46,7 @@ def _is_envier_class(fullname: str, node: object) -> bool:
 
 
 def _is_envier_maker(node: object, name: str) -> bool:
+    """Check that a method is Env's var, v, der, or d declaration helper."""
     if isinstance(node, TypeAlias) and isinstance(node.target, Instance):
         node = node.target.type
     if not isinstance(node, TypeInfo) or name not in _envier_attr_makers:
@@ -56,6 +60,7 @@ def _is_envier_maker(node: object, name: str) -> bool:
 
 
 def _envier_base_class_callback(ctx: ClassDefContext) -> None:
+    """Assign declared value types to fields created by var, v, der, or d."""
     for stmt in ctx.cls.defs.body:
         if isinstance(stmt, AssignmentStmt):
             decl = stmt.rvalue
