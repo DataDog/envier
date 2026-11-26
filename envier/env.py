@@ -230,7 +230,7 @@ class Env(metaclass=EnvMeta):
     are considered to be a representation of ``True``.
 
     There is also basic support for collections. An item of type ``list``,
-    ``t.Tuple`` or ``set`` will be parsed using ``,`` as item separator.
+    ``tuple`` or ``set`` will be parsed using ``,`` as item separator.
     Similarly, an item of type ``dict`` will be parsed with ``,`` as item
     separator, and ``:`` as value separator. These can be changed by overriding
     the ``__item_separator__`` and ``__value_separator__`` class attributes
